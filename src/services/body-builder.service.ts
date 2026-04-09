@@ -117,20 +117,16 @@ export class BodyBuilderService {
         : {}),
     };
 
-    /**
-     * IMPORTANTE:
-     * El sha256 debe generarse sobre el string del campo "notificacion"
-     * ya armado y ya cifrado, según tu documentación.
-     */
     const notificacionString = JSON.stringify(notificacionFinal);
     const sha256 = CryptoService.sha256Hex(notificacionString);
 
-    const llaveSimetricaEncrypted = CryptoService.encryptRsaToBase64(
+    // 🔥 IMPORTANTE: RSA sobre el HEX STRING, no sobre los bytes puros
+    const llaveSimetricaEncrypted = CryptoService.encryptRsaUtf8ToBase64(
       aes.keyHex,
       publicKeyPem,
     );
 
-    const ivEncrypted = CryptoService.encryptRsaToBase64(
+    const ivEncrypted = CryptoService.encryptRsaUtf8ToBase64(
       aes.ivHex,
       publicKeyPem,
     );
