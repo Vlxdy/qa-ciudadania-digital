@@ -1,19 +1,20 @@
 import path from "path";
-import { env } from "./config/env";
+import { env } from "../config/env";
 import {
   NotificacionInputSchema,
   NotificacionInput,
-} from "./schemas/notification.schema";
+} from "../schemas/notification.schema";
 import {
   readJsonFile,
   readTextFile,
   writeJsonFile,
   ensureDir,
-} from "./utils/file.util";
-import { logger } from "./utils/logger.util";
-import { CryptoService } from "./services/crypto.service";
-import { BodyBuilderService } from "./services/body-builder.service";
-import { SenderService } from "./services/sender.service";
+} from "../utils/file.util";
+import { logger } from "../utils/logger.util";
+import { CryptoService } from "../services/crypto.service";
+import { BodyBuilderService } from "../services/body-builder.service";
+import { SenderService } from "../services/sender.service";
+import { CurlService } from "../services/curl.service";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -65,6 +66,15 @@ async function main() {
 
   logger.success(`Body generado: ${bodyPath}`);
   logger.success(`Debug generado: ${debugPath}`);
+
+  // donde ya generas el body final
+  const fileName = "notificacion-01"; // dinámico
+  const outputDir = process.env.OUTPUT_DIR!;
+  const issuer = process.env.ISSUER_NOTIFICADOR!;
+  const token = process.env.TOKEN_CONFIGURACION!;
+
+  // guardar curl
+  CurlService.generateNotificadorCurl(fileName, issuer, token, outputDir);
 
   if (shouldSend) {
     logger.info("Enviando notificación al endpoint...");
