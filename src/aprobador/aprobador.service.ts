@@ -1,8 +1,8 @@
 import axios from "axios";
-import { AprobadorBody, AprobadorMultiplesBody } from "./aprobador-builder";
+import { AprobadorBodySingle, AprobadorMultiplesBody } from "./aprobador-builder";
 
 export class AprobadorService {
-  static async enviar(body: AprobadorBody, token: string, url: string) {
+  static async enviar(body: AprobadorBodySingle, token: string, url: string) {
     const response = await axios.post(`${url}/api/solicitudes`, body, {
       headers: {
         Authorization: `Bearer ${token}`,

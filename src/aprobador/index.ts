@@ -4,6 +4,7 @@ import { BatchProcessor } from "./batch.processor";
 import { AprobadorBuilder } from "./aprobador-builder";
 import { AprobadorService } from "./aprobador.service";
 import { CurlService } from "./services/curl.service";
+import { PlaywrightApprovalService } from "./services/playwright-approval.service";
 import dotenv from "dotenv";
 import { logger } from "../utils/logger.util";
 
@@ -76,7 +77,16 @@ if (fs.statSync(fullPath).isDirectory()) {
     )
       .then((res) => {
         logger.success("Solicitud SIMPLE enviada correctamente");
+        return PlaywrightApprovalService.process(
+          res,
+          process.env.ACCESS_TOKEN_CIUDADANIA!,
+        ).then((approvalListener) => ({ res, approvalListener }));
+      })
+      .then(({ res, approvalListener }) => {
         console.log(res);
+        if (approvalListener) {
+          console.log("approvalListener", approvalListener);
+        }
       })
       .catch((err) => {
         logger.error(err.response?.data || err.message);
@@ -106,7 +116,16 @@ if (fs.statSync(fullPath).isDirectory()) {
         )
           .then((res) => {
             logger.success("Solicitud MÚLTIPLE enviada correctamente");
+            return PlaywrightApprovalService.process(
+              res,
+              process.env.ACCESS_TOKEN_CIUDADANIA!,
+            ).then((approvalListener) => ({ res, approvalListener }));
+          })
+          .then(({ res, approvalListener }) => {
             console.log(res);
+            if (approvalListener) {
+              console.log("approvalListener", approvalListener);
+            }
           })
           .catch((err) => {
             logger.error(err.response?.data || err.message);
@@ -142,7 +161,16 @@ if (fs.statSync(fullPath).isDirectory()) {
     )
       .then((res) => {
         logger.success("Solicitud múltiple enviada correctamente");
+        return PlaywrightApprovalService.process(
+          res,
+          process.env.ACCESS_TOKEN_CIUDADANIA!,
+        ).then((approvalListener) => ({ res, approvalListener }));
+      })
+      .then(({ res, approvalListener }) => {
         console.log(res);
+        if (approvalListener) {
+          console.log("approvalListener", approvalListener);
+        }
       })
       .catch((err) => {
         logger.error(err.response?.data || err.message);
@@ -175,7 +203,16 @@ if (fs.statSync(fullPath).isDirectory()) {
     )
       .then((res) => {
         logger.success("Solicitud enviada correctamente");
+        return PlaywrightApprovalService.process(
+          res,
+          process.env.ACCESS_TOKEN_CIUDADANIA!,
+        ).then((approvalListener) => ({ res, approvalListener }));
+      })
+      .then(({ res, approvalListener }) => {
         console.log(res);
+        if (approvalListener) {
+          console.log("approvalListener", approvalListener);
+        }
       })
       .catch((err) => {
         logger.error(err.response?.data || err.message);

@@ -53,6 +53,12 @@ HASH_MODE=BUFFER
 # HASH_MODE=BASE64
 
 OUTPUT_DIR=./output
+
+# Listener de aprobación automática con Playwright
+APROBACION_RESULT_ENDPOINT=/api/solicitudes
+APROBACION_SUCCESS_PATTERN="\"aprobado\":true"
+APROBACION_WAIT_TIMEOUT_MS=120000
+APROBACION_HEADLESS=true
 ```
 
 ---
@@ -215,6 +221,30 @@ npm run flujo -- ./assets/documento.pdf
 ```
 
 Así `proveedor` y `aprobador` mantienen su código separado, pero se ejecutan en una sola corrida.
+
+## ✅ Navegación automática al `response.datos.link` y escucha de endpoint
+
+Cuando una solicitud de aprobación responde con:
+
+```json
+{
+  "response": {
+    "datos": {
+      "link": "https://.../solicitudes/<uuid>"
+    }
+  }
+}
+```
+
+el mecanismo de `aprobador` ahora:
+
+1. Extrae automáticamente el `link`.
+2. Abre el navegador con Playwright.
+3. Navega a esa URL enviando `Authorization: Bearer <ACCESS_TOKEN_CIUDADANIA>`.
+4. Espera una respuesta de red cuyo endpoint contenga `APROBACION_RESULT_ENDPOINT`.
+5. Marca el resultado como aprobado cuando detecta `aprobado=true`, `finalizado=true` o un estado equivalente.
+
+Este comportamiento se aplica tanto en aprobaciones **individuales** como **múltiples**.
 
 ## 🔐 Proveedor (inicio del flujo OAuth con Playwright)
 

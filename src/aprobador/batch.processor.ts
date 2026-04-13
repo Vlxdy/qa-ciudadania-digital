@@ -3,6 +3,7 @@ import path from "path";
 import { AprobadorBuilder } from "./aprobador-builder";
 import { AprobadorService } from "./aprobador.service";
 import { CurlService } from "./services/curl.service";
+import { PlaywrightApprovalService } from "./services/playwright-approval.service";
 import { logger } from "../utils/logger.util";
 
 export class BatchProcessor {
@@ -68,6 +69,10 @@ export class BatchProcessor {
       );
 
       result.response = response;
+      result.approvalListener = await PlaywrightApprovalService.process(
+        response,
+        process.env.ACCESS_TOKEN_CIUDADANIA!,
+      );
       logger.success("[MULTIPLES] Paso 6: solicitud enviada correctamente.");
     } catch (error: any) {
       result.status = "ERROR";
@@ -129,7 +134,12 @@ export class BatchProcessor {
           process.env.APROBADOR_URL!,
         );
 
-        results.push({ file, status: "OK", response });
+        const approvalListener = await PlaywrightApprovalService.process(
+          response,
+          process.env.ACCESS_TOKEN_CIUDADANIA!,
+        );
+
+        results.push({ file, status: "OK", response, approvalListener });
         logger.success(`[SIMPLE] Archivo ${file} aprobado.`);
       } catch (error: any) {
         results.push({
