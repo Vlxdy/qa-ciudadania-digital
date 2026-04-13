@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 export class CurlService {
   static save(
@@ -25,7 +25,7 @@ export class CurlService {
 `;
 
     fs.writeFileSync(curlPath, curl);
-    fs.chmodSync(curlPath, '755');
+    fs.chmodSync(curlPath, 0o755);
 
     return { bodyPath, curlPath };
   }

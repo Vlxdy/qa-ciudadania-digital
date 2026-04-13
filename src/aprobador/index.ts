@@ -1,54 +1,58 @@
 import path from "path";
-import dotenv from "dotenv";
+import fs from "fs";
+import { BatchProcessor } from "./batch.processor";
 import { AprobadorBuilder } from "./aprobador-builder";
 import { AprobadorService } from "./aprobador.service";
 import { CurlService } from "./services/curl.service";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-const args = process.argv.slice(2);
-const filePath = args[0];
+const input = process.argv[2];
 
-if (!filePath) {
-  throw new Error("Debes enviar un archivo (.pdf o .json)");
+if (!input) {
+  console.error("❌ Debes pasar un archivo o directorio");
+  process.exit(1);
 }
 
-// argumento opcional
-const descArg = args.find((a) => a.startsWith("--desc="));
-const descripcion = descArg?.split("=")[1];
+const fullPath = path.resolve(input);
 
-console.log("📄 Archivo recibido:", filePath);
+if (!fs.existsSync(fullPath)) {
+  console.error("❌ Ruta no existe");
+  process.exit(1);
+}
 
-const body = AprobadorBuilder.buildFromFile(
-  filePath,
-  process.env.ACCESS_TOKEN_CIUDADANIA!,
-  descripcion,
-);
+if (fs.statSync(fullPath).isDirectory()) {
+  console.log("📦 Modo batch activado");
+  BatchProcessor.processDirectory(fullPath);
+} else {
+  console.log("📄 Modo archivo único");
 
-console.log("🧾 Body generado:", JSON.stringify(body, null, 2));
+  const body = AprobadorBuilder.buildFromFile(
+    fullPath,
+    process.env.ACCESS_TOKEN_CIUDADANIA!,
+  );
 
-const URL = process.env.APROBADOR_URL!;
-const TOKEN = process.env.TOKEN_CLIENTE!;
+  const baseName = path.parse(fullPath).name;
+  const outputDir = process.env.OUTPUT_DIR!;
 
-const filenameBase = path.basename(filePath).replace(/\.(pdf|json)$/i, "");
+  CurlService.save(
+    outputDir,
+    body,
+    process.env.APROBADOR_URL!,
+    process.env.TOKEN_CLIENTE!,
+    baseName,
+  );
 
-const { bodyPath, curlPath } = CurlService.save(
-  process.env.OUTPUT_DIR || "./output",
-  body,
-  URL,
-  TOKEN,
-  filenameBase,
-);
-
-console.log("📁 Body guardado en:", bodyPath);
-console.log("📁 Curl guardado en:", curlPath);
-
-(async () => {
-  try {
-    console.log("🚀 Enviando solicitud...");
-    const resp = await AprobadorService.enviar(body, TOKEN, URL);
-    console.log("✅ Respuesta:", resp);
-  } catch (err: any) {
-    console.error("❌ Error:", err.response?.data || err.message);
-  }
-})();
+  AprobadorService.enviar(
+    body,
+    process.env.TOKEN_CLIENTE!,
+    process.env.APROBADOR_URL!,
+  )
+    .then((res) => {
+      console.log("✅ OK:", res);
+    })
+    .catch((err) => {
+      console.log("❌ ERROR:", err.response?.data || err.message);
+    });
+}

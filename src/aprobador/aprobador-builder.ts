@@ -15,14 +15,13 @@ export class AprobadorBuilder {
   static buildFromFile(
     filePath: string,
     accessToken: string,
-    descripcion?: string,
+    descripcion?: string
   ): AprobadorBody {
     const buffer = FileService.readFileRaw(filePath);
     const tipoDocumento = FileService.detectTipoDocumento(filePath);
 
     const base64 = buffer.toString("base64");
 
-    // 🔥 modo configurable (CLAVE)
     const hash =
       process.env.HASH_MODE === "BASE64"
         ? HashService.sha256FromBase64String(base64)
