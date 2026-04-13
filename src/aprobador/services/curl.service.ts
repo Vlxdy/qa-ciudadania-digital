@@ -8,6 +8,7 @@ export class CurlService {
     url: string,
     token: string,
     filenameBase: string,
+    endpoint = "/api/solicitudes",
   ) {
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -18,7 +19,7 @@ export class CurlService {
 
     fs.writeFileSync(bodyPath, JSON.stringify(body, null, 2));
 
-    const curl = `curl -X POST "${url}/api/solicitudes" \\
+    const curl = `curl -X POST "${url}${endpoint}" \\
   -H "Authorization: Bearer ${token}" \\
   -H "Content-Type: application/json" \\
   --data @${path.basename(bodyPath)}

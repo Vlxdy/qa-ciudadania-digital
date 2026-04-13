@@ -2,7 +2,17 @@ import { v4 as uuidv4 } from "uuid";
 import { FileService } from "./services/file.service";
 import { HashService } from "./services/hash.service";
 
-export type AprobadorBody = {
+export type AprobadorBodyMultiple = {
+  tipoDocumento: "PDF" | "JSON";
+  hashDocumento: string;
+  descripcion: string;
+  idTramite: string;
+  accessToken: string;
+  documento: string;
+  uuidDocumento: string;
+};
+
+export type AprobadorBodySingle = {
   tipoDocumento: "PDF" | "JSON";
   hashDocumento: string;
   descripcion: string;
@@ -11,12 +21,22 @@ export type AprobadorBody = {
   documento: string;
 };
 
+export type DocumentoAprobacion = Omit<
+  AprobadorBodyMultiple,
+  "idTramite" | "accessToken"
+>;
+
+export type AprobadorMultiplesBody = {
+  idTramite: string;
+  accessToken: string;
+  documentos: DocumentoAprobacion[];
+};
+
 export class AprobadorBuilder {
-  static buildFromFile(
+  static buildDocumentoFromFile(
     filePath: string,
-    accessToken: string,
-    descripcion?: string
-  ): AprobadorBody {
+    descripcion?: string,
+  ): DocumentoAprobacion {
     const buffer = FileService.readFileRaw(filePath);
     const tipoDocumento = FileService.detectTipoDocumento(filePath);
 
@@ -34,9 +54,35 @@ export class AprobadorBuilder {
       tipoDocumento,
       hashDocumento: hash,
       descripcion: descripcion || `Aprobación automática de ${tipoDocumento}`,
+      documento: base64,
+      uuidDocumento: uuidv4(),
+    };
+  }
+
+  static buildFromFile(
+    filePath: string,
+    accessToken: string,
+    descripcion?: string,
+  ): AprobadorBodySingle {
+
+    const {uuidDocumento, ...datosDocumento} = AprobadorBuilder.buildDocumentoFromFile(filePath, descripcion);
+    return {
+      ...datosDocumento,
       idTramite: uuidv4(),
       accessToken,
-      documento: base64,
+    };
+  }
+
+  static buildMultiplesFromFiles(
+    files: string[],
+    accessToken: string,
+  ): AprobadorMultiplesBody {
+    return {
+      idTramite: uuidv4(),
+      accessToken,
+      documentos: files.map((filePath) =>
+        AprobadorBuilder.buildDocumentoFromFile(filePath),
+      ),
     };
   }
 }

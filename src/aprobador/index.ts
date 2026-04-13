@@ -5,54 +5,180 @@ import { AprobadorBuilder } from "./aprobador-builder";
 import { AprobadorService } from "./aprobador.service";
 import { CurlService } from "./services/curl.service";
 import dotenv from "dotenv";
+import { logger } from "../utils/logger.util";
 
 dotenv.config();
 
-const input = process.argv[2];
+const args = process.argv.slice(2);
+const input = args.find((arg) => !arg.startsWith("--"));
+const modeArg = args.find((arg) => arg.startsWith("--mode="));
+const mode = modeArg?.split("=")[1] as
+  | "single"
+  | "multiple"
+  | "both"
+  | undefined;
 
 if (!input) {
-  console.error("❌ Debes pasar un archivo o directorio");
+  logger.error(
+    "Debes pasar un archivo o directorio. Opcional: --mode=single|multiple|both",
+  );
   process.exit(1);
 }
 
 const fullPath = path.resolve(input);
 
 if (!fs.existsSync(fullPath)) {
-  console.error("❌ Ruta no existe");
+  logger.error("Ruta no existe");
   process.exit(1);
 }
 
 if (fs.statSync(fullPath).isDirectory()) {
-  console.log("📦 Modo batch activado");
-  BatchProcessor.processDirectory(fullPath);
+  const batchMode = mode || "both";
+  logger.info(`Modo directorio activado -> ${batchMode.toUpperCase()}`);
+
+  const runner =
+    batchMode === "single"
+      ? () => BatchProcessor.processDirectorySingle(fullPath)
+      : batchMode === "multiple"
+        ? () => BatchProcessor.processDirectoryMultiples(fullPath)
+        : () => BatchProcessor.processDirectory(fullPath);
+
+  runner().catch((error: any) => {
+    logger.error(error.response?.data || error.message);
+    process.exit(1);
+  });
 } else {
-  console.log("📄 Modo archivo único");
+  if (mode === "both" || !mode) {
+    logger.info(
+      "Modo archivo + both: se enviará primero SIMPLE y luego MULTIPLE para el mismo archivo.",
+    );
 
-  const body = AprobadorBuilder.buildFromFile(
-    fullPath,
-    process.env.ACCESS_TOKEN_CIUDADANIA!,
-  );
+    const simpleBody = AprobadorBuilder.buildFromFile(
+      fullPath,
+      process.env.ACCESS_TOKEN_CIUDADANIA!,
+    );
+    const simpleBaseName = `${path.parse(fullPath).name}-single`;
+    const { bodyPath: singleBodyPath, curlPath: singleCurlPath } = CurlService.save(
+      process.env.OUTPUT_DIR!,
+      simpleBody,
+      process.env.APROBADOR_URL!,
+      process.env.TOKEN_CLIENTE!,
+      simpleBaseName,
+      "/api/solicitudes",
+    );
+    logger.success(`Body SIMPLE guardado en: ${singleBodyPath}`);
+    logger.success(`Curl SIMPLE guardado en: ${singleCurlPath}`);
 
-  const baseName = path.parse(fullPath).name;
-  const outputDir = process.env.OUTPUT_DIR!;
+    AprobadorService.enviar(
+      simpleBody,
+      process.env.TOKEN_CLIENTE!,
+      process.env.APROBADOR_URL!,
+    )
+      .then((res) => {
+        logger.success("Solicitud SIMPLE enviada correctamente");
+        console.log(res);
+      })
+      .catch((err) => {
+        logger.error(err.response?.data || err.message);
+      })
+      .finally(() => {
+        const multipleBody = AprobadorBuilder.buildMultiplesFromFiles(
+          [fullPath],
+          process.env.ACCESS_TOKEN_CIUDADANIA!,
+        );
+        const multipleBaseName = `${path.parse(fullPath).name}-multiple`;
+        const { bodyPath, curlPath } = CurlService.save(
+          process.env.OUTPUT_DIR!,
+          multipleBody,
+          process.env.APROBADOR_URL!,
+          process.env.TOKEN_CLIENTE!,
+          multipleBaseName,
+          "/api/solicitudes/multiples",
+        );
 
-  CurlService.save(
-    outputDir,
-    body,
-    process.env.APROBADOR_URL!,
-    process.env.TOKEN_CLIENTE!,
-    baseName,
-  );
+        logger.success(`Body MULTIPLE guardado en: ${bodyPath}`);
+        logger.success(`Curl MULTIPLE guardado en: ${curlPath}`);
 
-  AprobadorService.enviar(
-    body,
-    process.env.TOKEN_CLIENTE!,
-    process.env.APROBADOR_URL!,
-  )
-    .then((res) => {
-      console.log("✅ OK:", res);
-    })
-    .catch((err) => {
-      console.log("❌ ERROR:", err.response?.data || err.message);
-    });
+        AprobadorService.enviarMultiples(
+          multipleBody,
+          process.env.TOKEN_CLIENTE!,
+          process.env.APROBADOR_URL!,
+        )
+          .then((res) => {
+            logger.success("Solicitud MÚLTIPLE enviada correctamente");
+            console.log(res);
+          })
+          .catch((err) => {
+            logger.error(err.response?.data || err.message);
+          });
+      });
+  } else if (mode === "multiple") {
+    logger.info(
+      "Modo archivo + multiple: se enviará al endpoint /api/solicitudes/multiples con 1 documento.",
+    );
+
+    const body = AprobadorBuilder.buildMultiplesFromFiles(
+      [fullPath],
+      process.env.ACCESS_TOKEN_CIUDADANIA!,
+    );
+
+    const baseName = `${path.parse(fullPath).name}-multiple`;
+    const { bodyPath, curlPath } = CurlService.save(
+      process.env.OUTPUT_DIR!,
+      body,
+      process.env.APROBADOR_URL!,
+      process.env.TOKEN_CLIENTE!,
+      baseName,
+      "/api/solicitudes/multiples",
+    );
+
+    logger.success(`Body guardado en: ${bodyPath}`);
+    logger.success(`Curl guardado en: ${curlPath}`);
+
+    AprobadorService.enviarMultiples(
+      body,
+      process.env.TOKEN_CLIENTE!,
+      process.env.APROBADOR_URL!,
+    )
+      .then((res) => {
+        logger.success("Solicitud múltiple enviada correctamente");
+        console.log(res);
+      })
+      .catch((err) => {
+        logger.error(err.response?.data || err.message);
+      });
+  } else {
+    logger.info("Modo archivo único");
+
+    const body = AprobadorBuilder.buildFromFile(
+      fullPath,
+      process.env.ACCESS_TOKEN_CIUDADANIA!,
+    );
+
+    const baseName = path.parse(fullPath).name;
+    const outputDir = process.env.OUTPUT_DIR!;
+
+    const { bodyPath, curlPath } = CurlService.save(
+      outputDir,
+      body,
+      process.env.APROBADOR_URL!,
+      process.env.TOKEN_CLIENTE!,
+      baseName,
+    );
+    logger.success(`Body guardado en: ${bodyPath}`);
+    logger.success(`Curl guardado en: ${curlPath}`);
+
+    AprobadorService.enviar(
+      body,
+      process.env.TOKEN_CLIENTE!,
+      process.env.APROBADOR_URL!,
+    )
+      .then((res) => {
+        logger.success("Solicitud enviada correctamente");
+        console.log(res);
+      })
+      .catch((err) => {
+        logger.error(err.response?.data || err.message);
+      });
+  }
 }
