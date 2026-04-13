@@ -47,9 +47,6 @@ export class AprobadorBuilder {
         ? HashService.sha256FromBase64String(base64)
         : HashService.sha256(buffer);
 
-    console.log("DEBUG hash:", hash);
-    console.log("DEBUG tipo:", tipoDocumento);
-
     return {
       tipoDocumento,
       hashDocumento: hash,
@@ -64,8 +61,8 @@ export class AprobadorBuilder {
     accessToken: string,
     descripcion?: string,
   ): AprobadorBodySingle {
-
-    const {uuidDocumento, ...datosDocumento} = AprobadorBuilder.buildDocumentoFromFile(filePath, descripcion);
+    const { uuidDocumento, ...datosDocumento } =
+      AprobadorBuilder.buildDocumentoFromFile(filePath, descripcion);
     return {
       ...datosDocumento,
       idTramite: uuidv4(),

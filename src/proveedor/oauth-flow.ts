@@ -4,6 +4,7 @@ import { URL } from "url";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
+import { ingresarDatosLogin } from "./datos";
 
 export type OidcConfig = {
   issuer: string;
@@ -100,21 +101,7 @@ async function waitForRedirectInBrowser(
 }
 
 async function maybeAutoLogin(page: any): Promise<void> {
-  await page.locator("#login").fill("4160481");
-  await page.locator("#password").fill("Agepic135");
-  await page.locator("#continuar").click();
-  await page.getByRole("button", { name: /otro medio/i }).click();
-  await page
-    .locator('input[type="radio"][name="method"][value="TOTP"]')
-    .check();
-  await page.locator("#continuar-2fa").click();
-  await page.locator('input[data-index="0"]').fill("1");
-  await page.locator('input[data-index="1"]').fill("2");
-  await page.locator('input[data-index="2"]').fill("3");
-  await page.locator('input[data-index="3"]').fill("4");
-  await page.locator('input[data-index="4"]').fill("5");
-  await page.locator('input[data-index="5"]').fill("6");
-  await page.locator("#continuar-2fa-validar").click();
+  await ingresarDatosLogin(page);
 }
 
 async function waitForCallback(
@@ -226,7 +213,9 @@ export async function runProveedorOAuth(
   }
 
   if (callbackParams.error) {
-    throw new Error(`Error de autenticación: ${JSON.stringify(callbackParams)}`);
+    throw new Error(
+      `Error de autenticación: ${JSON.stringify(callbackParams)}`,
+    );
   }
 
   if (callbackParams.state !== state) {
