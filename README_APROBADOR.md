@@ -195,3 +195,65 @@ sha256sum out.pdf
 - ✅ JSON válido
 - ❌ JSON mal formado
 - 🔁 Cambios de HASH_MODE para validar backend
+
+---
+
+## 🔐 Proveedor (inicio del flujo OAuth con Playwright)
+
+Nuevo comando:
+
+```bash
+npm run proveedor
+```
+
+Variables principales (formato solicitado):
+
+- `OIDC_ISSUER`
+- `OIDC_CLIENT_ID`
+- `OIDC_CLIENT_SECRET`
+- `OIDC_SCOPE`
+- `OIDC_REDIRECT_URI`
+- `OIDC_POST_LOGOUT_REDIRECT_URI`
+
+La URL de autorización se arma con estos parámetros obligatorios y adicionales:
+
+- `client_id`, `scope`, `response_type=code`, `redirect_uri`, `state`, `nonce`
+- `session=true`, `property=user`, `defaultStrategy=oidc`
+
+Si `OIDC_REDIRECT_URI` es externo (no `localhost/127.0.0.1`), el script **no intenta abrir un server local**; captura el callback leyendo la URL final del navegador para evitar errores `EADDRNOTAVAIL`.
+
+Opciones:
+
+```bash
+npm run proveedor -- --pkce
+npm run proveedor -- --no-token
+```
+
+Archivos generados:
+
+- `output/proveedor.callback.json`
+- `output/proveedor.token.json`
+
+### 🤖 Autollenado de credenciales (ejemplo)
+
+Puedes activar autollenado en `.env` para que Playwright escriba usuario/clave automáticamente.
+
+```env
+OIDC_AUTO_LOGIN=true
+OIDC_LOGIN_USER_SELECTOR=input[name="username"]
+OIDC_LOGIN_PASSWORD_SELECTOR=input[name="password"]
+OIDC_LOGIN_SUBMIT_SELECTOR=button[type="submit"]
+OIDC_LOGIN_USERNAME=mi_usuario
+OIDC_LOGIN_PASSWORD=mi_password
+```
+
+Si hay OTP/MFA:
+
+```env
+OIDC_LOGIN_OTP_SELECTOR=input[name="otp"]
+OIDC_LOGIN_OTP_VALUE=123456
+OIDC_LOGIN_OTP_SUBMIT_SELECTOR=button[type="submit"]
+```
+
+> El lugar donde van las “instrucciones de Playwright” es en estos selectores (`OIDC_LOGIN_*_SELECTOR`).
+> Ajusta esos selectores inspeccionando tu HTML real del proveedor.
