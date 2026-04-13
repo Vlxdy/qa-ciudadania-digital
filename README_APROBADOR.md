@@ -198,6 +198,24 @@ sha256sum out.pdf
 
 ---
 
+## 🔗 Flujo unificado (sin mezclar mecanismos)
+
+Se agregó `src/index.ts` como orquestador principal para ejecutar ambos mecanismos **por separado**:
+
+1. Ejecuta `proveedor` para login OAuth y genera `output/proveedor.token.json`.
+2. Lee `access_token` desde ese archivo.
+3. Ejecuta `aprobador` como proceso independiente, inyectando ese token en:
+   - `TOKEN_CLIENTE`
+   - `ACCESS_TOKEN_CIUDADANIA`
+
+Comando:
+
+```bash
+npm run flujo -- ./assets/documento.pdf
+```
+
+Así `proveedor` y `aprobador` mantienen su código separado, pero se ejecutan en una sola corrida.
+
 ## 🔐 Proveedor (inicio del flujo OAuth con Playwright)
 
 Nuevo comando:
