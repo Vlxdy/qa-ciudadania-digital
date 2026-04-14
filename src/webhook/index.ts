@@ -40,10 +40,7 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
       raw += chunk.toString();
     });
     req.on("end", () => {
-      if (!raw) {
-        resolve(null);
-        return;
-      }
+      if (!raw) return resolve(null);
       try {
         resolve(JSON.parse(raw));
       } catch {
@@ -57,7 +54,6 @@ function savePayload(mecanismo: string, method: string, body: unknown): string {
   const dir = path.join(OUTPUT_DIR, "webhooks", mecanismo);
   fs.mkdirSync(dir, { recursive: true });
 
-  // 🔥 mejor formato para archivos
   const timestamp = dayjs().format("YYYY-MM-DD_HH-mm-ss");
 
   const filename = `${timestamp}-${mecanismo}.json`;
@@ -80,12 +76,8 @@ function savePayload(mecanismo: string, method: string, body: unknown): string {
   return filePath;
 }
 
-function sendFile(res: http.ServerResponse, filePath: string) {
-  if (!fs.existsSync(filePath)) {
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Archivo no encontrado" }));
-    return;
-  }
+function sendFile(res: http.ServerResponse, filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return false;
 
   const ext = path.extname(filePath).toLowerCase();
 
@@ -102,6 +94,7 @@ function sendFile(res: http.ServerResponse, filePath: string) {
   });
 
   fs.createReadStream(filePath).pipe(res);
+  return true;
 }
 
 function htmlVisitado(mecanismo: string): string {
@@ -133,86 +126,129 @@ function htmlVisitado(mecanismo: string): string {
 
 // ── SERVER ───────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
+  const start = Date.now();
+
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", `http://localhost`);
 
-  // ── FILE DOWNLOAD: /file/:name ────────────────────────────────
-  const fileMatch = FILE_ROUTE_PATTERN.exec(url.pathname);
+  logger.section(`${method} ${url.pathname}`, 0);
 
-  if (fileMatch && method === "GET") {
-    const fileName = fileMatch[1];
+  try {
+    // ── FILE DOWNLOAD ────────────────────────────────────────────
+    const fileMatch = FILE_ROUTE_PATTERN.exec(url.pathname);
 
-    // 🔐 protección básica
-    if (fileName.includes("..") || fileName.includes("/")) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Nombre de archivo inválido" }));
+    if (fileMatch && method === "GET") {
+      const fileName = fileMatch[1];
+
+      logger.info("Descarga de archivo");
+
+      if (fileName.includes("..") || fileName.includes("/")) {
+        logger.warn("Nombre de archivo inválido");
+
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Nombre de archivo inválido" }));
+        return;
+      }
+
+      const filePath = path.join(FILE_DIR, fileName);
+
+      logger.info(`Archivo: ${fileName}`);
+      logger.debug("Ruta completa", filePath);
+
+      const ok = sendFile(res, filePath);
+
+      if (!ok) {
+        logger.warn("Archivo no encontrado");
+
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Archivo no encontrado" }));
+        return;
+      }
+
+      logger.ok("Archivo enviado");
       return;
     }
 
-    const filePath = path.join(FILE_DIR, fileName);
+    // ── WEBHOOK ─────────────────────────────────────────────────
+    const match = MECANISMO_PATTERN.exec(url.pathname);
 
-    logger.info(`[File] Descargando → ${filePath}`);
+    if (!match) {
+      logger.warn("Ruta no encontrada");
 
-    sendFile(res, filePath);
-    return;
-  }
-
-  // ── WEBHOOK ───────────────────────────────────────────────────
-  const match = MECANISMO_PATTERN.exec(url.pathname);
-
-  if (!match) {
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Ruta no encontrada" }));
-    return;
-  }
-
-  const mecanismo = match[1];
-
-  // ── GET: respuesta visual ─────────────────────────────────────
-  if (method === "GET") {
-    logger.info(`[Webhook][${mecanismo}] GET recibido`);
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(htmlVisitado(mecanismo));
-    return;
-  }
-
-  // ── POST / PUT / PATCH ────────────────────────────────────────
-  if (WRITE_METHODS.includes(method)) {
-    if (JWT_ENABLED) {
-      const token = extractBearer(req);
-
-      if (!token) {
-        logger.warn(`[Webhook][${mecanismo}] ${method} sin token`);
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(
-          JSON.stringify({ error: "Authorization: Bearer <jwt> requerido" }),
-        );
-        return;
-      }
-
-      try {
-        JwtService.verify(token);
-      } catch (err: any) {
-        logger.warn(`[Webhook][${mecanismo}] JWT inválido — ${err.message}`);
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: err.message }));
-        return;
-      }
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Ruta no encontrada" }));
+      return;
     }
 
-    const body = await readBody(req);
-    const filePath = savePayload(mecanismo, method, body);
+    const mecanismo = match[1];
 
-    logger.ok(`[Webhook][${mecanismo}] ${method} guardado → ${filePath}`);
+    // ── GET ─────────────────────────────────────────────────────
+    if (method === "GET") {
+      logger.info(`Webhook consultado: ${mecanismo}`);
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, mecanismo, savedAt: filePath }));
-    return;
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(htmlVisitado(mecanismo));
+
+      logger.ok("Respuesta enviada");
+      return;
+    }
+
+    // ── WRITE METHODS ───────────────────────────────────────────
+    if (WRITE_METHODS.includes(method)) {
+      if (JWT_ENABLED) {
+        logger.info("Validando JWT");
+
+        const token = extractBearer(req);
+
+        if (!token) {
+          logger.warn("Token no proporcionado");
+
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Bearer token requerido" }));
+          return;
+        }
+
+        try {
+          JwtService.verify(token);
+          logger.ok("JWT válido");
+        } catch (err) {
+          logger.error("JWT inválido", err);
+
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "JWT inválido" }));
+          return;
+        }
+      }
+
+      const body = await readBody(req);
+
+      logger.info(`Procesando webhook: ${mecanismo}`);
+      logger.debug("Payload", body);
+
+      const filePath = savePayload(mecanismo, method, body);
+
+      logger.ok("Payload guardado");
+      logger.info(`Archivo: ${filePath}`);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, mecanismo, savedAt: filePath }));
+
+      return;
+    }
+
+    // ── METHOD NOT ALLOWED ──────────────────────────────────────
+    logger.warn(`Método no permitido: ${method}`);
+
+    res.writeHead(405, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `Método ${method} no permitido` }));
+  } catch (err) {
+    logger.error("Error interno", err);
+
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Internal Server Error" }));
+  } finally {
+    logger.info(`Duración: ${Date.now() - start}ms`);
   }
-
-  // ── Método no permitido ───────────────────────────────────────
-  res.writeHead(405, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: `Método ${method} no permitido` }));
 });
 
 // ── START ───────────────────────────────────────────────────────
@@ -220,8 +256,10 @@ server.listen(PORT, () => {
   const webhookBase = `http://localhost:${PORT}${PATH_PREFIX}/webhook`;
   const fileBase = `http://localhost:${PORT}${PATH_PREFIX}/file`;
 
-  logger.info(`[Server] Escuchando en http://localhost:${PORT}`);
-  logger.info(`[Webhook] Base: ${webhookBase}/:mecanismo`);
-  logger.info(`[Files]   Base: ${fileBase}/:name`);
-  logger.info(`[Webhook] JWT: ${JWT_ENABLED ? "habilitado" : "deshabilitado"}`);
+  logger.section("Servidor iniciado", 0);
+
+  logger.info(`Puerto: ${PORT}`);
+  logger.info(`Webhook: ${webhookBase}/:mecanismo`);
+  logger.info(`Files: ${fileBase}/:name`);
+  logger.info(`JWT: ${JWT_ENABLED ? "habilitado" : "deshabilitado"}`);
 });
