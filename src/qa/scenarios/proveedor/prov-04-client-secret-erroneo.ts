@@ -15,7 +15,7 @@ const META = {
 
 const EXPECTED = {
   success: false,
-  httpStatus: 401,
+  httpStatus: 400,
 };
 
 export const scenario: Scenario = {

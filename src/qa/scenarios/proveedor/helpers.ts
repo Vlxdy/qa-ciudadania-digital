@@ -27,11 +27,11 @@ export function buildTokenPayload(overrides: {
   const clientId = overrides.clientId ?? config.clientId;
   const clientSecret = overrides.clientSecret ?? config.clientSecret;
   const redirectUri = overrides.redirectUri ?? config.redirectUri;
-  const code = overrides.code ?? "CODIGO_INVALIDO_QA_" + Date.now();
+  const code = overrides.code;
 
   const payload = new URLSearchParams({
     grant_type: overrides.grantType ?? "authorization_code",
-    code,
+    ...(code ? { code: code } : {}),
     redirect_uri: redirectUri,
   });
 

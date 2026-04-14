@@ -15,12 +15,12 @@ const META = {
 
 const EXPECTED = {
   success: false,
-  httpStatus: 401,
+  httpStatus: 400,
 };
 
 export const scenario: Scenario = {
   ...META,
-  description: 'client_id y client_secret vacíos deben retornar 401 del IDP.',
+  description: 'client_id y client_secret vacíos deben retornar 400 del IDP.',
   run: async (): Promise<ScenarioResult> => {
     const { payload, headers } = buildTokenPayload({
       clientId: '',

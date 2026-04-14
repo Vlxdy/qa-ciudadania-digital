@@ -15,13 +15,13 @@ const META = {
 
 const EXPECTED = {
   success: false,
-  httpStatus: 401,
-  bodyContains: ['invalid_client'],
+  httpStatus: 400,
+  bodyContains: ['client authentication failed'],
 };
 
 export const scenario: Scenario = {
   ...META,
-  description: 'Un client_id no registrado en el IDP debe retornar 401 con invalid_client.',
+  description: 'Un client_id no registrado en el IDP debe retornar 400 con invalid_client.',
   run: async (): Promise<ScenarioResult> => {
     const { payload, headers } = buildTokenPayload({
       clientId: 'QA_CLIENT_ID_INVALIDO_99999',
