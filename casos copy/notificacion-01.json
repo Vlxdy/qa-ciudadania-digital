@@ -1,0 +1,50 @@
+{
+  "notificacion": {
+    "datosAdicionalesEntidad": [
+      {
+        "clave": "proceso",
+        "valor": "penal"
+      },
+      {
+        "clave": "Nro Juzgado",
+        "valor": "5to Guarida"
+      }
+    ],
+    "titulo": "Notificación de prueba QA",
+    "descripcion": "Se notifica al ciudadano sobre el proceso X.",
+
+    "notificador": {
+      "tipoDocumento": "CI",
+      "numeroDocumento": "4160481",
+      "fechaNacimiento": "1960-05-26"
+    },
+
+    "autoridad": {
+      "tipoDocumento": "CI",
+      "numeroDocumento": "4160481",
+      "fechaNacimiento": "1960-05-26"
+    },
+
+    "notificados": [
+      {
+        "tipoDocumento": "CI",
+        "numeroDocumento": "558553544",
+        "fechaNacimiento": "1974-01-31"
+      }
+    ],
+
+    "enlaces": [
+      {
+        "etiqueta": "Adjunto QA",
+        "url": "https://k61xx4rt-3000.brs.devtunnels.ms/api/file/110_diciembre.pdf",
+        "tipo": "APROBACION"
+      }
+    ],
+
+    "formularioNotificacion": {
+      "etiqueta": "Adjunto QA",
+      "url": "https://k61xx4rt-3000.brs.devtunnels.ms/api/file/110_diciembre.pdf",
+      "tipo": "APROBACION"
+    }
+  }
+}

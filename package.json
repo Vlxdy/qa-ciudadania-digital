@@ -12,7 +12,9 @@
     "proveedor": "tsx src/proveedor/index.ts",
     "flujo": "tsx src/index.ts",
     "webhook": "tsx src/webhook/index.ts",
-    "generar-token": "tsx src/webhook/generate-token.ts"
+    "generar-token": "tsx src/webhook/generate-token.ts",
+    "qa": "tsx src/qa/index.ts",
+    "qa:fixtures": "tsx src/qa/fixtures/generator.ts"
   },
   "keywords": [],
   "author": "",
