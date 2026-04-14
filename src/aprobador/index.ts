@@ -27,6 +27,9 @@ if (!input) {
 }
 
 const fullPath = path.resolve(input);
+const baseOutputDir = process.env.OUTPUT_DIR!;
+const singleDir = path.join(baseOutputDir, "aprobador", "single");
+const multipleDir = path.join(baseOutputDir, "aprobador", "multiple");
 
 if (!fs.existsSync(fullPath)) {
   logger.error("Ruta no existe");
@@ -58,9 +61,9 @@ if (fs.statSync(fullPath).isDirectory()) {
       fullPath,
       process.env.ACCESS_TOKEN_CIUDADANIA!,
     );
-    const simpleBaseName = `${path.parse(fullPath).name}-single`;
+    const simpleBaseName = path.parse(fullPath).name;
     const { bodyPath: singleBodyPath, curlPath: singleCurlPath } = CurlService.save(
-      process.env.OUTPUT_DIR!,
+      singleDir,
       simpleBody,
       process.env.APROBADOR_URL!,
       process.env.TOKEN_CLIENTE!,
@@ -96,9 +99,9 @@ if (fs.statSync(fullPath).isDirectory()) {
           [fullPath],
           process.env.ACCESS_TOKEN_CIUDADANIA!,
         );
-        const multipleBaseName = `${path.parse(fullPath).name}-multiple`;
+        const multipleBaseName = path.parse(fullPath).name;
         const { bodyPath, curlPath } = CurlService.save(
-          process.env.OUTPUT_DIR!,
+          multipleDir,
           multipleBody,
           process.env.APROBADOR_URL!,
           process.env.TOKEN_CLIENTE!,
@@ -141,9 +144,9 @@ if (fs.statSync(fullPath).isDirectory()) {
       process.env.ACCESS_TOKEN_CIUDADANIA!,
     );
 
-    const baseName = `${path.parse(fullPath).name}-multiple`;
+    const baseName = path.parse(fullPath).name;
     const { bodyPath, curlPath } = CurlService.save(
-      process.env.OUTPUT_DIR!,
+      multipleDir,
       body,
       process.env.APROBADOR_URL!,
       process.env.TOKEN_CLIENTE!,
@@ -184,10 +187,9 @@ if (fs.statSync(fullPath).isDirectory()) {
     );
 
     const baseName = path.parse(fullPath).name;
-    const outputDir = process.env.OUTPUT_DIR!;
 
     const { bodyPath, curlPath } = CurlService.save(
-      outputDir,
+      singleDir,
       body,
       process.env.APROBADOR_URL!,
       process.env.TOKEN_CLIENTE!,

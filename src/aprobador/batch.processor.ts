@@ -38,11 +38,11 @@ export class BatchProcessor {
 
     logger.success("[MULTIPLES] Paso 2: body generado.");
 
-    const outputDir = process.env.OUTPUT_DIR!;
+    const multipleDir = path.join(process.env.OUTPUT_DIR!, "aprobador", "multiple");
     const filenameBase = `multiples-${Date.now()}`;
 
     const { bodyPath, curlPath } = CurlService.save(
-      outputDir,
+      multipleDir,
       body,
       process.env.APROBADOR_URL!,
       process.env.TOKEN_CLIENTE!,
@@ -81,7 +81,7 @@ export class BatchProcessor {
     }
 
     const reportPath = path.join(
-      process.env.OUTPUT_DIR!,
+      multipleDir,
       `batch-result-multiples-${Date.now()}.json`,
     );
 
@@ -102,7 +102,7 @@ export class BatchProcessor {
       `[SIMPLE] Preparando aprobación simple para ${files.length} archivo(s)...`,
     );
 
-    const outputDir = process.env.OUTPUT_DIR!;
+    const singleDir = path.join(process.env.OUTPUT_DIR!, "aprobador", "single");
     const results: Array<Record<string, unknown>> = [];
 
     for (const [index, file] of files.entries()) {
@@ -117,7 +117,7 @@ export class BatchProcessor {
 
         const baseName = `${path.parse(file).name}-${Date.now()}`;
         const { bodyPath, curlPath } = CurlService.save(
-          outputDir,
+          singleDir,
           body,
           process.env.APROBADOR_URL!,
           process.env.TOKEN_CLIENTE!,
@@ -152,7 +152,7 @@ export class BatchProcessor {
     }
 
     const reportPath = path.join(
-      process.env.OUTPUT_DIR!,
+      singleDir,
       `batch-result-single-${Date.now()}.json`,
     );
     fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));

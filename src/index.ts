@@ -21,7 +21,11 @@ function runCommand(command: string, args: string[], env?: NodeJS.ProcessEnv) {
         return;
       }
 
-      reject(new Error(`Comando falló (${command} ${args.join(" ")}) con código ${code}`));
+      reject(
+        new Error(
+          `Comando falló (${command} ${args.join(" ")}) con código ${code}`,
+        ),
+      );
     });
   });
 }
@@ -44,7 +48,11 @@ async function main() {
   await runCommand("npm", ["run", "proveedor"]);
 
   const outputDir = process.env.OUTPUT_DIR ?? "./output";
-  const tokenFilePath = path.join(outputDir, "proveedor.token.json");
+  const tokenFilePath = path.join(
+    outputDir,
+    "proveedor",
+    "proveedor.token.json",
+  );
 
   if (!fs.existsSync(tokenFilePath)) {
     throw new Error(
@@ -72,7 +80,9 @@ async function main() {
     envForAprobador,
   );
 
-  console.log("\n✅ Flujo principal completado: proveedor y aprobador ejecutados.");
+  console.log(
+    "\n✅ Flujo principal completado: proveedor y aprobador ejecutados.",
+  );
 }
 
 main().catch((error: any) => {

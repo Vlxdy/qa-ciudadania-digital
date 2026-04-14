@@ -230,7 +230,7 @@ export async function runProveedorOAuth(
     throw new Error("No llegó authorization code.");
   }
 
-  const outputDir = process.env.OUTPUT_DIR ?? "./output";
+  const outputDir = path.join(process.env.OUTPUT_DIR ?? "./output", "proveedor");
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(
     path.join(outputDir, "proveedor.callback.json"),

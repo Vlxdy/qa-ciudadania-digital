@@ -14,7 +14,7 @@ async function main() {
     return;
   }
 
-  console.log("✅ Token obtenido y guardado en output/proveedor.token.json");
+  console.log("✅ Token obtenido y guardado en output/proveedor/proveedor.token.json");
   console.log("access_token:", result.tokenResponse?.access_token);
 }
 
