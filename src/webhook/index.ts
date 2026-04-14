@@ -4,6 +4,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { JwtService } from "./jwt.service";
 import { logger } from "../utils/logger.util";
+import dayjs from "dayjs";
 
 dotenv.config();
 
@@ -47,7 +48,7 @@ function savePayload(mecanismo: string, method: string, body: unknown): string {
   const dir = path.join(OUTPUT_DIR, "webhooks", mecanismo);
   fs.mkdirSync(dir, { recursive: true });
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestamp = dayjs().format("YYYY-MM-DD HH:mm:ss");
   const filename = `${timestamp}-${mecanismo}.json`;
   const filePath = path.join(dir, filename);
 
@@ -56,7 +57,7 @@ function savePayload(mecanismo: string, method: string, body: unknown): string {
     JSON.stringify(
       {
         mecanismo,
-        receivedAt: new Date().toISOString(),
+        receivedAt: timestamp,
         method,
         body,
       },
