@@ -24,9 +24,7 @@ export const DocumentoAdjuntoSchema = z.object({
       message: "La URL debe usar HTTPS",
     }),
   tipo: z.enum(["FIRMA", "APROBACION"]),
-  hash: z
-    .string()
-    .regex(/^[a-fA-F0-9]{64}$/, "El hash debe ser un SHA-256 hexadecimal"),
+  hash: z.string().optional(),
 });
 
 export const NotificacionInputSchema = z.object({

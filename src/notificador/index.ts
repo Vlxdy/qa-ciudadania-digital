@@ -15,6 +15,7 @@ import { CryptoService } from "../services/crypto.service";
 import { BodyBuilderService } from "../services/body-builder.service";
 import { SenderService } from "../services/sender.service";
 import { CurlService } from "../services/curl.service";
+import { FileHashService } from "./file-hash.service";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -32,7 +33,11 @@ async function main() {
   const shouldSend = args.includes("--send") || env.AUTO_SEND;
 
   if (!inputPath) {
-    logger.error("Debes indicar la ruta del archivo JSON de entrada", undefined, 0);
+    logger.error(
+      "Debes indicar la ruta del archivo JSON de entrada",
+      undefined,
+      0,
+    );
     process.exit(1);
   }
 
@@ -50,6 +55,28 @@ async function main() {
   const input = parsed.data;
   const publicKeyPem = readTextFile(env.RSA_PUBLIC_KEY_PATH);
   const aes = CryptoService.generateAesMaterial();
+
+  logger.section("Generando hash de archivos adjuntos");
+
+  // Procesar enlaces
+  if (input.notificacion.enlaces?.length) {
+    for (const enlace of input.notificacion.enlaces) {
+      if (enlace.url) {
+        logger.info(`Descargando y generando hash: ${enlace.url}`);
+        enlace.hash = await FileHashService.downloadAndHash(enlace.url);
+      }
+    }
+  }
+
+  // Procesar formularioNotificacion
+  if (input.notificacion.formularioNotificacion?.url) {
+    const url = input.notificacion.formularioNotificacion.url;
+
+    logger.info(`Descargando y generando hash formulario: ${url}`);
+
+    input.notificacion.formularioNotificacion.hash =
+      await FileHashService.downloadAndHash(url);
+  }
 
   logger.section("Generando body cifrado");
   const { body, debug } = BodyBuilderService.build(input, aes, publicKeyPem);
@@ -76,7 +103,9 @@ async function main() {
 
   if (shouldSend) {
     logger.section("Enviando notificación");
-    logger.info("POST → " + env.ISSUER_NOTIFICADOR + "/api/notificacion/natural");
+    logger.info(
+      "POST → " + env.ISSUER_NOTIFICADOR + "/api/notificacion/natural",
+    );
     try {
       const response = await SenderService.send(body);
       writeJsonFile(responsePath, response);
@@ -84,10 +113,10 @@ async function main() {
       logger.debug("Respuesta del servidor", response);
     } catch (error: any) {
       if (error.response) {
-        logger.error(
-          "Error enviando la notificación",
-          { status: error.response.status, data: error.response.data },
-        );
+        logger.error("Error enviando la notificación", {
+          status: error.response.status,
+          data: error.response.data,
+        });
         writeJsonFile(responsePath, {
           status: error.response.status,
           data: error.response.data,
