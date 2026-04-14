@@ -1,4 +1,5 @@
 import type { Scenario } from '../../types/scenario.types';
+import { scenario as prov00 } from './prov-00-login-browser';
 import { scenario as prov01 } from './prov-01-happy-path';
 import { scenario as prov02 } from './prov-02-sin-credenciales';
 import { scenario as prov03 } from './prov-03-client-id-erroneo';
@@ -9,6 +10,7 @@ import { scenario as prov07 } from './prov-07-state-mismatch';
 import { scenario as prov08 } from './prov-08-nonce-mismatch';
 
 export const proveedorScenarios: Scenario[] = [
+  prov00,
   prov01,
   prov02,
   prov03,

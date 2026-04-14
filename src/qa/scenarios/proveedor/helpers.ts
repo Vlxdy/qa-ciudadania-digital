@@ -1,12 +1,11 @@
 /**
  * Helpers para escenarios del módulo proveedor.
- * Se enfoca en el token endpoint (POST /token) ya que el flujo completo
- * requiere navegador y es catalogado como skip:true en escenarios automatizados.
  */
-import { qaEnv } from '../../config/qa-env';
+import { getProveedorSessionStore } from "./services/session.store";
 
 export function tokenUrl(): string {
-  return `${qaEnv.OIDC_ISSUER}${qaEnv.OIDC_TOKEN_PATH}`;
+  const { config } = getProveedorSessionStore();
+  return `${config.issuer}${config.tokenPath}`;
 }
 
 /**
@@ -20,51 +19,56 @@ export function buildTokenPayload(overrides: {
   redirectUri?: string;
   grantType?: string;
   codeVerifier?: string;
-  authMethod?: 'post' | 'basic';
+  authMethod?: "post" | "basic";
 }): { payload: URLSearchParams; headers: Record<string, string> } {
-  const authMethod = overrides.authMethod ?? qaEnv.OIDC_CLIENT_AUTH_METHOD;
-  const clientId = overrides.clientId ?? qaEnv.OIDC_CLIENT_ID;
-  const clientSecret = overrides.clientSecret ?? qaEnv.OIDC_CLIENT_SECRET;
-  const redirectUri = overrides.redirectUri ?? qaEnv.OIDC_REDIRECT_URI;
-  const code = overrides.code ?? 'CODIGO_INVALIDO_QA_' + Date.now();
+  const { config } = getProveedorSessionStore();
+
+  const authMethod = overrides.authMethod ?? config.authMethod;
+  const clientId = overrides.clientId ?? config.clientId;
+  const clientSecret = overrides.clientSecret ?? config.clientSecret;
+  const redirectUri = overrides.redirectUri ?? config.redirectUri;
+  const code = overrides.code ?? "CODIGO_INVALIDO_QA_" + Date.now();
 
   const payload = new URLSearchParams({
-    grant_type: overrides.grantType ?? 'authorization_code',
+    grant_type: overrides.grantType ?? "authorization_code",
     code,
     redirect_uri: redirectUri,
   });
 
   if (overrides.codeVerifier) {
-    payload.set('code_verifier', overrides.codeVerifier);
+    payload.set("code_verifier", overrides.codeVerifier);
   }
 
   const headers: Record<string, string> = {};
 
-  if (authMethod === 'basic') {
-    const cred = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    headers['Authorization'] = `Basic ${cred}`;
+  if (authMethod === "basic") {
+    const cred = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    headers["Authorization"] = `Basic ${cred}`;
   } else {
-    payload.set('client_id', clientId);
-    payload.set('client_secret', clientSecret);
+    payload.set("client_id", clientId);
+    payload.set("client_secret", clientSecret ?? "");
   }
 
   return { payload, headers };
 }
 
 /**
- * Simula la validación de state (lógica local de oauth-flow.ts).
+ * Simula la validación de state (lógica local del flujo OAuth).
  * Retorna el error si hay mismatch, null si coinciden.
  */
 export function validateState(sent: string, received: string): string | null {
-  if (received !== sent) return 'State inválido. Posible CSRF.';
+  if (received !== sent) return "State inválido. Posible CSRF.";
   return null;
 }
 
 /**
- * Simula la validación de nonce (lógica local de oauth-flow.ts).
+ * Simula la validación de nonce (lógica local del flujo OAuth).
  * Retorna el error si hay mismatch, null si coinciden o si el nonce no viene en el callback.
  */
-export function validateNonce(sent: string, received: string | undefined): string | null {
-  if (received && received !== sent) return 'Nonce inválido.';
+export function validateNonce(
+  sent: string,
+  received: string | undefined,
+): string | null {
+  if (received && received !== sent) return "Nonce inválido.";
   return null;
 }
