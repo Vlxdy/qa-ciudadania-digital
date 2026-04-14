@@ -20,7 +20,11 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    logger.error("Uso: npm run dev -- ./casos/notificacion-01.json [--send]");
+    logger.error(
+      "Uso: npm run dev -- ./casos/notificacion-01.json [--send]",
+      undefined,
+      0,
+    );
     process.exit(1);
   }
 
@@ -28,35 +32,31 @@ async function main() {
   const shouldSend = args.includes("--send") || env.AUTO_SEND;
 
   if (!inputPath) {
-    logger.error("Debes indicar la ruta del archivo JSON de entrada.");
+    logger.error("Debes indicar la ruta del archivo JSON de entrada", undefined, 0);
     process.exit(1);
   }
 
-  logger.info(`Leyendo caso: ${inputPath}`);
+  logger.section("Preparando notificación");
+  logger.info(`Caso: ${inputPath}`);
 
   const rawInput = readJsonFile<NotificacionInput>(inputPath);
-
   const parsed = NotificacionInputSchema.safeParse(rawInput);
 
   if (!parsed.success) {
-    logger.error("El JSON de entrada no es válido:");
-    console.dir(parsed.error.format(), { depth: null });
+    logger.error("El JSON de entrada no es válido", parsed.error.format());
     process.exit(1);
   }
 
   const input = parsed.data;
-
   const publicKeyPem = readTextFile(env.RSA_PUBLIC_KEY_PATH);
   const aes = CryptoService.generateAesMaterial();
 
-  logger.info("Generando body cifrado...");
-
+  logger.section("Generando body cifrado");
   const { body, debug } = BodyBuilderService.build(input, aes, publicKeyPem);
 
   ensureDir(env.OUTPUT_DIR);
 
   const baseName = path.basename(inputPath, path.extname(inputPath));
-
   const bodyPath = path.join(env.OUTPUT_DIR, `body-final.${baseName}.json`);
   const debugPath = path.join(env.OUTPUT_DIR, `debug.${baseName}.json`);
   const responsePath = path.join(env.OUTPUT_DIR, `response.${baseName}.json`);
@@ -64,48 +64,45 @@ async function main() {
   writeJsonFile(bodyPath, body);
   writeJsonFile(debugPath, debug);
 
-  logger.success(`Body generado: ${bodyPath}`);
-  logger.success(`Debug generado: ${debugPath}`);
+  logger.ok(`Body generado: ${bodyPath}`);
+  logger.ok(`Debug generado: ${debugPath}`);
 
-  // donde ya generas el body final
-  const fileName = "notificacion-01"; // dinámico
+  const fileName = "notificacion-01";
   const outputDir = process.env.OUTPUT_DIR!;
   const issuer = process.env.ISSUER_NOTIFICADOR!;
   const token = process.env.TOKEN_CONFIGURACION!;
 
-  // guardar curl
   CurlService.generateNotificadorCurl(fileName, issuer, token, outputDir);
 
   if (shouldSend) {
-    logger.info("Enviando notificación al endpoint...");
+    logger.section("Enviando notificación");
+    logger.info("POST → " + env.ISSUER_NOTIFICADOR + "/api/notificacion/natural");
     try {
       const response = await SenderService.send(body);
       writeJsonFile(responsePath, response);
-      logger.success(`Respuesta guardada en: ${responsePath}`);
-      console.log("\n📨 Respuesta del servidor:\n");
-      console.dir(response, { depth: null });
+      logger.ok(`Respuesta guardada en: ${responsePath}`);
+      logger.debug("Respuesta del servidor", response);
     } catch (error: any) {
-      logger.error("Error enviando la notificación");
-
       if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Data:", error.response.data);
+        logger.error(
+          "Error enviando la notificación",
+          { status: error.response.status, data: error.response.data },
+        );
         writeJsonFile(responsePath, {
           status: error.response.status,
           data: error.response.data,
         });
       } else {
-        console.error(error.message);
+        logger.error("Error enviando la notificación", error);
       }
-
       process.exit(1);
     }
   } else {
-    logger.warn("Modo solo generación (no se envió al endpoint).");
+    logger.warn("Modo solo generación — no se envió al endpoint");
   }
 }
 
 main().catch((error) => {
-  logger.error(error.message);
+  logger.error("Error inesperado", error, 0);
   process.exit(1);
 });

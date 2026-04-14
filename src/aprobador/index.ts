@@ -22,6 +22,8 @@ const mode = modeArg?.split("=")[1] as
 if (!input) {
   logger.error(
     "Debes pasar un archivo o directorio. Opcional: --mode=single|multiple|both",
+    undefined,
+    0,
   );
   process.exit(1);
 }
@@ -32,13 +34,14 @@ const singleDir = path.join(baseOutputDir, "aprobador", "single");
 const multipleDir = path.join(baseOutputDir, "aprobador", "multiple");
 
 if (!fs.existsSync(fullPath)) {
-  logger.error("Ruta no existe");
+  logger.error("Ruta no existe: " + fullPath, undefined, 0);
   process.exit(1);
 }
 
 if (fs.statSync(fullPath).isDirectory()) {
   const batchMode = mode || "both";
-  logger.info(`Modo directorio activado -> ${batchMode.toUpperCase()}`);
+  logger.section(`Modo directorio — ${batchMode.toUpperCase()}`);
+  logger.info(`Input: ${fullPath}`, 2);
 
   const runner =
     batchMode === "single"
@@ -48,14 +51,13 @@ if (fs.statSync(fullPath).isDirectory()) {
         : () => BatchProcessor.processDirectory(fullPath);
 
   runner().catch((error: any) => {
-    logger.error(error.response?.data || error.message);
+    logger.error("Error en procesamiento batch", error.response?.data ?? error, 0);
     process.exit(1);
   });
 } else {
   if (mode === "both" || !mode) {
-    logger.info(
-      "Modo archivo + both: se enviará primero SIMPLE y luego MULTIPLE para el mismo archivo.",
-    );
+    logger.section(`Archivo único — modo BOTH`);
+    logger.info(`Input: ${fullPath}`, 2);
 
     const simpleBody = AprobadorBuilder.buildFromFile(
       fullPath,
@@ -70,8 +72,8 @@ if (fs.statSync(fullPath).isDirectory()) {
       simpleBaseName,
       "/api/solicitudes",
     );
-    logger.success(`Body SIMPLE guardado en: ${singleBodyPath}`);
-    logger.success(`Curl SIMPLE guardado en: ${singleCurlPath}`);
+    logger.ok(`Body SIMPLE guardado en: ${singleBodyPath}`);
+    logger.ok(`Curl SIMPLE guardado en: ${singleCurlPath}`);
 
     AprobadorService.enviar(
       simpleBody,
@@ -79,22 +81,24 @@ if (fs.statSync(fullPath).isDirectory()) {
       process.env.APROBADOR_URL!,
     )
       .then((res) => {
-        logger.success("Solicitud SIMPLE enviada correctamente");
+        logger.ok("Solicitud SIMPLE enviada correctamente");
+        logger.debug("response", res);
         return PlaywrightApprovalService.process(
           res,
           process.env.ACCESS_TOKEN_CIUDADANIA!,
         ).then((approvalListener) => ({ res, approvalListener }));
       })
-      .then(({ res, approvalListener }) => {
-        console.log(res);
+      .then(({ approvalListener }) => {
         if (approvalListener) {
-          console.log("approvalListener", approvalListener);
+          logger.debug("approvalListener", approvalListener);
         }
       })
       .catch((err) => {
-        logger.error(err.response?.data || err.message);
+        logger.error("Error enviando solicitud SIMPLE", err.response?.data ?? err);
       })
       .finally(() => {
+        logger.section("Enviando solicitud MÚLTIPLE");
+
         const multipleBody = AprobadorBuilder.buildMultiplesFromFiles(
           [fullPath],
           process.env.ACCESS_TOKEN_CIUDADANIA!,
@@ -109,8 +113,8 @@ if (fs.statSync(fullPath).isDirectory()) {
           "/api/solicitudes/multiples",
         );
 
-        logger.success(`Body MULTIPLE guardado en: ${bodyPath}`);
-        logger.success(`Curl MULTIPLE guardado en: ${curlPath}`);
+        logger.ok(`Body MULTIPLE guardado en: ${bodyPath}`);
+        logger.ok(`Curl MULTIPLE guardado en: ${curlPath}`);
 
         AprobadorService.enviarMultiples(
           multipleBody,
@@ -118,26 +122,25 @@ if (fs.statSync(fullPath).isDirectory()) {
           process.env.APROBADOR_URL!,
         )
           .then((res) => {
-            logger.success("Solicitud MÚLTIPLE enviada correctamente");
+            logger.ok("Solicitud MÚLTIPLE enviada correctamente");
+            logger.debug("response", res);
             return PlaywrightApprovalService.process(
               res,
               process.env.ACCESS_TOKEN_CIUDADANIA!,
             ).then((approvalListener) => ({ res, approvalListener }));
           })
-          .then(({ res, approvalListener }) => {
-            console.log(res);
+          .then(({ approvalListener }) => {
             if (approvalListener) {
-              console.log("approvalListener", approvalListener);
+              logger.debug("approvalListener", approvalListener);
             }
           })
           .catch((err) => {
-            logger.error(err.response?.data || err.message);
+            logger.error("Error enviando solicitud MÚLTIPLE", err.response?.data ?? err);
           });
       });
   } else if (mode === "multiple") {
-    logger.info(
-      "Modo archivo + multiple: se enviará al endpoint /api/solicitudes/multiples con 1 documento.",
-    );
+    logger.section("Archivo único — modo MULTIPLE");
+    logger.info(`Input: ${fullPath}`, 2);
 
     const body = AprobadorBuilder.buildMultiplesFromFiles(
       [fullPath],
@@ -154,8 +157,8 @@ if (fs.statSync(fullPath).isDirectory()) {
       "/api/solicitudes/multiples",
     );
 
-    logger.success(`Body guardado en: ${bodyPath}`);
-    logger.success(`Curl guardado en: ${curlPath}`);
+    logger.ok(`Body guardado en: ${bodyPath}`);
+    logger.ok(`Curl guardado en: ${curlPath}`);
 
     AprobadorService.enviarMultiples(
       body,
@@ -163,23 +166,24 @@ if (fs.statSync(fullPath).isDirectory()) {
       process.env.APROBADOR_URL!,
     )
       .then((res) => {
-        logger.success("Solicitud múltiple enviada correctamente");
+        logger.ok("Solicitud múltiple enviada correctamente");
+        logger.debug("response", res);
         return PlaywrightApprovalService.process(
           res,
           process.env.ACCESS_TOKEN_CIUDADANIA!,
         ).then((approvalListener) => ({ res, approvalListener }));
       })
-      .then(({ res, approvalListener }) => {
-        console.log(res);
+      .then(({ approvalListener }) => {
         if (approvalListener) {
-          console.log("approvalListener", approvalListener);
+          logger.debug("approvalListener", approvalListener);
         }
       })
       .catch((err) => {
-        logger.error(err.response?.data || err.message);
+        logger.error("Error enviando solicitud múltiple", err.response?.data ?? err);
       });
   } else {
-    logger.info("Modo archivo único");
+    logger.section("Archivo único — modo SINGLE");
+    logger.info(`Input: ${fullPath}`, 2);
 
     const body = AprobadorBuilder.buildFromFile(
       fullPath,
@@ -195,8 +199,8 @@ if (fs.statSync(fullPath).isDirectory()) {
       process.env.TOKEN_CLIENTE!,
       baseName,
     );
-    logger.success(`Body guardado en: ${bodyPath}`);
-    logger.success(`Curl guardado en: ${curlPath}`);
+    logger.ok(`Body guardado en: ${bodyPath}`);
+    logger.ok(`Curl guardado en: ${curlPath}`);
 
     AprobadorService.enviar(
       body,
@@ -204,20 +208,20 @@ if (fs.statSync(fullPath).isDirectory()) {
       process.env.APROBADOR_URL!,
     )
       .then((res) => {
-        logger.success("Solicitud enviada correctamente");
+        logger.ok("Solicitud enviada correctamente");
+        logger.debug("response", res);
         return PlaywrightApprovalService.process(
           res,
           process.env.ACCESS_TOKEN_CIUDADANIA!,
         ).then((approvalListener) => ({ res, approvalListener }));
       })
-      .then(({ res, approvalListener }) => {
-        console.log(res);
+      .then(({ approvalListener }) => {
         if (approvalListener) {
-          console.log("approvalListener", approvalListener);
+          logger.debug("approvalListener", approvalListener);
         }
       })
       .catch((err) => {
-        logger.error(err.response?.data || err.message);
+        logger.error("Error enviando solicitud", err.response?.data ?? err);
       });
   }
 }

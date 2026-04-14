@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { z } from "zod";
+import { logger } from "../utils/logger.util";
 
 dotenv.config();
 
@@ -28,8 +29,7 @@ const EnvSchema = z.object({
 const parsed = EnvSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error("❌ Error validando variables de entorno:");
-  console.error(parsed.error.format());
+  logger.error("Variables de entorno inválidas", parsed.error.format(), 0);
   process.exit(1);
 }
 

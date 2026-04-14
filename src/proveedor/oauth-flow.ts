@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import { ingresarDatosLogin } from "./datos";
+import { logger } from "../utils/logger.util";
 
 export type OidcConfig = {
   issuer: string;
@@ -177,8 +178,8 @@ export async function runProveedorOAuth(
     authUrl.searchParams.set("code_challenge_method", "S256");
   }
 
-  console.log("🌐 URL autorización generada:");
-  console.log(authUrl.toString());
+  logger.section("Generando URL de autorización");
+  logger.debug("URL", authUrl.toString());
 
   const useLocalListener = isLocalRedirect(cfg.redirectUri);
   const callbackPromise = useLocalListener
@@ -186,11 +187,12 @@ export async function runProveedorOAuth(
     : null;
 
   if (!useLocalListener) {
-    console.log(
-      "ℹ️ Redirect URI no es local. Se capturará el callback directamente desde la URL del navegador.",
+    logger.info(
+      "Redirect URI no es local — callback capturado desde URL del navegador",
     );
   }
 
+  logger.section("Autenticación en navegador");
   const playwrightModule = process.env.PLAYWRIGHT_PACKAGE ?? "playwright";
   const { chromium } = await import(playwrightModule);
   const browser = await chromium.launch({
@@ -199,12 +201,13 @@ export async function runProveedorOAuth(
   const page = await browser.newPage();
 
   await page.goto(authUrl.toString(), { waitUntil: "domcontentloaded" });
-  console.log("🔐 Navegador abierto para login...");
+  logger.info("Navegador abierto — esperando login del usuario");
 
   await maybeAutoLogin(page);
 
   let callbackParams: Record<string, string>;
   try {
+    logger.info("Esperando callback OAuth...");
     callbackParams = callbackPromise
       ? await callbackPromise
       : await waitForRedirectInBrowser(page, cfg.redirectUri, cfg.timeoutMs);
@@ -230,6 +233,8 @@ export async function runProveedorOAuth(
     throw new Error("No llegó authorization code.");
   }
 
+  logger.ok("Callback recibido — code obtenido");
+
   const outputDir = path.join(process.env.OUTPUT_DIR ?? "./output", "proveedor");
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(
@@ -240,6 +245,8 @@ export async function runProveedorOAuth(
   if (!shouldExchangeToken) {
     return { callbackParams };
   }
+
+  logger.section("Intercambiando código por token");
 
   const payload = new URLSearchParams({
     grant_type: "authorization_code",
@@ -265,6 +272,8 @@ export async function runProveedorOAuth(
   }
 
   const tokenUrl = new URL(cfg.tokenPath, cfg.issuer).toString();
+  logger.info(`POST → ${tokenUrl}`);
+
   const tokenHttpResponse = await axios.post(tokenUrl, payload.toString(), {
     headers,
     timeout: cfg.timeoutMs,
@@ -274,6 +283,8 @@ export async function runProveedorOAuth(
     path.join(outputDir, "proveedor.token.json"),
     JSON.stringify(tokenHttpResponse.data, null, 2),
   );
+
+  logger.ok("Token guardado en output/proveedor/proveedor.token.json");
 
   return {
     callbackParams,

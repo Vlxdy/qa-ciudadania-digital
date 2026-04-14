@@ -17,26 +17,23 @@ export class BatchProcessor {
     const files = BatchProcessor.getFiles(dirPath);
 
     if (files.length === 0) {
-      logger.warn("No se encontraron archivos para procesar.");
+      logger.warn("No se encontraron archivos para procesar", 2);
       return;
     }
 
-    logger.info(
-      `[MULTIPLES] Preparando aprobación múltiple para ${files.length} archivo(s)...`,
-    );
-
-    const filePaths = files.map((file) => path.join(dirPath, file));
+    logger.section(`Aprobación MÚLTIPLE — ${files.length} archivo(s)`);
 
     files.forEach((file, index) => {
-      logger.info(`[MULTIPLES] Paso 1.${index + 1}: archivo detectado -> ${file}`);
+      logger.info(`Archivo ${index + 1}: ${file}`, 2);
     });
 
+    const filePaths = files.map((file) => path.join(dirPath, file));
     const body = AprobadorBuilder.buildMultiplesFromFiles(
       filePaths,
       process.env.ACCESS_TOKEN_CIUDADANIA!,
     );
 
-    logger.success("[MULTIPLES] Paso 2: body generado.");
+    logger.ok("Body generado", 2);
 
     const multipleDir = path.join(process.env.OUTPUT_DIR!, "aprobador", "multiple");
     const filenameBase = `multiples-${Date.now()}`;
@@ -50,8 +47,8 @@ export class BatchProcessor {
       "/api/solicitudes/multiples",
     );
 
-    logger.success(`[MULTIPLES] Paso 3: body guardado en ${bodyPath}`);
-    logger.success(`[MULTIPLES] Paso 4: curl guardado en ${curlPath}`);
+    logger.ok(`Body guardado en ${bodyPath}`, 2);
+    logger.ok(`Curl guardado en ${curlPath}`, 2);
 
     const result: Record<string, unknown> = {
       mode: "MULTIPLES",
@@ -61,23 +58,27 @@ export class BatchProcessor {
     };
 
     try {
-      logger.info("[MULTIPLES] Paso 5: enviando solicitud...");
+      logger.info("Enviando solicitud...", 2);
       const response = await AprobadorService.enviarMultiples(
         body,
         process.env.TOKEN_CLIENTE!,
         process.env.APROBADOR_URL!,
       );
 
+      logger.ok("Solicitud enviada correctamente", 2);
+      logger.debug("response", response, 2);
+
       result.response = response;
       result.approvalListener = await PlaywrightApprovalService.process(
         response,
         process.env.ACCESS_TOKEN_CIUDADANIA!,
       );
-      logger.success("[MULTIPLES] Paso 6: solicitud enviada correctamente.");
+
+      logger.debug("approvalListener", result.approvalListener, 2);
     } catch (error: any) {
       result.status = "ERROR";
       result.error = error.response?.data || error.message;
-      logger.error("[MULTIPLES] Paso 6: error enviando la solicitud.");
+      logger.error("Error enviando la solicitud", error.response?.data ?? error, 2);
     }
 
     const reportPath = path.join(
@@ -86,28 +87,26 @@ export class BatchProcessor {
     );
 
     fs.writeFileSync(reportPath, JSON.stringify(result, null, 2));
-
-    logger.info(`[MULTIPLES] Paso 7: reporte guardado en ${reportPath}`);
+    logger.info(`Reporte guardado en ${reportPath}`, 2);
   }
 
   static async processDirectorySingle(dirPath: string) {
     const files = BatchProcessor.getFiles(dirPath);
 
     if (files.length === 0) {
-      logger.warn("No se encontraron archivos para procesar.");
+      logger.warn("No se encontraron archivos para procesar", 2);
       return;
     }
 
-    logger.info(
-      `[SIMPLE] Preparando aprobación simple para ${files.length} archivo(s)...`,
-    );
+    logger.section(`Aprobación SIMPLE — ${files.length} archivo(s)`);
 
     const singleDir = path.join(process.env.OUTPUT_DIR!, "aprobador", "single");
     const results: Array<Record<string, unknown>> = [];
 
     for (const [index, file] of files.entries()) {
       const filePath = path.join(dirPath, file);
-      logger.info(`[SIMPLE] Paso 1.${index + 1}: procesando ${file}`);
+
+      logger.section(`Archivo ${index + 1}/${files.length}: ${file}`, 2);
 
       try {
         const body = AprobadorBuilder.buildFromFile(
@@ -125,29 +124,35 @@ export class BatchProcessor {
           "/api/solicitudes",
         );
 
-        logger.success(`[SIMPLE] Body guardado en ${bodyPath}`);
-        logger.success(`[SIMPLE] Curl guardado en ${curlPath}`);
+        logger.ok(`Body guardado en ${bodyPath}`, 3);
+        logger.ok(`Curl guardado en ${curlPath}`, 3);
 
+        logger.info("Enviando solicitud...", 3);
         const response = await AprobadorService.enviar(
           body,
           process.env.TOKEN_CLIENTE!,
           process.env.APROBADOR_URL!,
         );
 
+        logger.ok("Solicitud enviada correctamente", 3);
+        logger.debug("response", response, 3);
+
         const approvalListener = await PlaywrightApprovalService.process(
           response,
           process.env.ACCESS_TOKEN_CIUDADANIA!,
         );
 
+        logger.debug("approvalListener", approvalListener, 3);
+
         results.push({ file, status: "OK", response, approvalListener });
-        logger.success(`[SIMPLE] Archivo ${file} aprobado.`);
+        logger.ok(`${file} aprobado`, 3);
       } catch (error: any) {
         results.push({
           file,
           status: "ERROR",
           error: error.response?.data || error.message,
         });
-        logger.error(`[SIMPLE] Error en archivo ${file}.`);
+        logger.error(`Error procesando ${file}`, error.response?.data ?? error, 3);
       }
     }
 
@@ -156,7 +161,7 @@ export class BatchProcessor {
       `batch-result-single-${Date.now()}.json`,
     );
     fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
-    logger.info(`[SIMPLE] Reporte guardado en ${reportPath}`);
+    logger.info(`Reporte guardado en ${reportPath}`, 2);
   }
 
   static async processDirectory(dirPath: string) {

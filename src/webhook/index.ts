@@ -43,11 +43,7 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
   });
 }
 
-function savePayload(
-  mecanismo: string,
-  method: string,
-  body: unknown,
-): string {
+function savePayload(mecanismo: string, method: string, body: unknown): string {
   const dir = path.join(OUTPUT_DIR, "webhooks", mecanismo);
   fs.mkdirSync(dir, { recursive: true });
 
@@ -147,7 +143,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const filePath = savePayload(mecanismo, method, body);
 
-    logger.success(`[Webhook][${mecanismo}] ${method} guardado → ${filePath}`);
+    logger.ok(`[Webhook][${mecanismo}] ${method} guardado → ${filePath}`);
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, mecanismo, savedAt: filePath }));

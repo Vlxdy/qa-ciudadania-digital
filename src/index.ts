@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
+import { logger } from "./utils/logger.util";
 
 dotenv.config();
 
@@ -34,17 +35,21 @@ async function main() {
   const input = process.argv[2];
 
   if (!input) {
-    console.error("❌ Debes pasar un archivo o directorio para el aprobador");
+    logger.error(
+      "Debes pasar un archivo o directorio para el aprobador",
+      undefined,
+      0,
+    );
     process.exit(1);
   }
 
   const fullPath = path.resolve(input);
   if (!fs.existsSync(fullPath)) {
-    console.error("❌ Ruta no existe:", fullPath);
+    logger.error("Ruta no existe: " + fullPath, undefined, 0);
     process.exit(1);
   }
 
-  console.log("\n🚀 Paso 1/2: ejecutando mecanismo de proveedor...\n");
+  logger.step(1, 2, "Proveedor — obteniendo access token");
   await runCommand("npm", ["run", "proveedor"]);
 
   const outputDir = process.env.OUTPUT_DIR ?? "./output";
@@ -67,7 +72,7 @@ async function main() {
     throw new Error("El archivo proveedor.token.json no contiene access_token");
   }
 
-  console.log("\n🚀 Paso 2/2: ejecutando mecanismo de aprobador...\n");
+  logger.step(2, 2, "Aprobador — procesando archivos");
 
   const envForAprobador: NodeJS.ProcessEnv = {
     ...process.env,
@@ -80,13 +85,10 @@ async function main() {
     envForAprobador,
   );
 
-  console.log(
-    "\n✅ Flujo principal completado: proveedor y aprobador ejecutados.",
-  );
+  logger.done("Flujo principal completado — proveedor y aprobador ejecutados");
 }
 
 main().catch((error: any) => {
-  console.error("❌ Error en flujo principal:");
-  console.error(error.message || error);
+  logger.error("Error en flujo principal", error, 0);
   process.exit(1);
 });

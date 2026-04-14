@@ -1,6 +1,6 @@
-// src/services/curl.service.ts
 import fs from "fs";
 import path from "path";
+import { logger } from "../utils/logger.util";
 
 export class CurlService {
   static generateNotificadorCurl(
@@ -22,6 +22,6 @@ export class CurlService {
 
     fs.writeFileSync(filePath, curl);
 
-    console.log(`📁 Curl guardado en: ${filePath}`);
+    logger.ok(`Curl guardado en: ${filePath}`);
   }
 }

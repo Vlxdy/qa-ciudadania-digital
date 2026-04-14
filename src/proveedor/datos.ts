@@ -1,3 +1,5 @@
+import { logger } from "../utils/logger.util";
+
 export async function ingresarDatosLogin(page: any) {
   if (process.env.CEDULA_IDENTIDAD && process.env.CONTRASENA) {
     await page.locator("#login").fill("4160481");
@@ -16,8 +18,8 @@ export async function ingresarDatosLogin(page: any) {
     await page.locator('input[data-index="5"]').fill("6");
     await page.locator("#continuar-2fa-validar").click();
   } else {
-    console.warn(
-      "No se han proporcionado las variables de entorno CEDULA_IDENTIDAD y CONTRASENA. Saltando el llenado automático del formulario de login.",
+    logger.warn(
+      "CEDULA_IDENTIDAD / CONTRASENA no configuradas — saltando autofill de login",
     );
   }
 }
