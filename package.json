@@ -10,7 +10,9 @@
     "aprobador": "tsx src/aprobador/index.ts",
     "notificador": "tsx src/notificador/index.ts",
     "proveedor": "tsx src/proveedor/index.ts",
-    "flujo": "tsx src/index.ts"
+    "flujo": "tsx src/index.ts",
+    "webhook": "tsx src/webhook/index.ts",
+    "generar-token": "tsx src/webhook/generate-token.ts"
   },
   "keywords": [],
   "author": "",
