@@ -3,6 +3,7 @@
  *
  * Uso:
  *   npm run qa                               — todos los escenarios
+ *                                             + guarda cURL/response por prueba en output/qa/curls/run-<fecha>/
  *   npm run qa -- --module=aprobador         — solo un módulo
  *   npm run qa -- --tag=negative             — por tag
  *   npm run qa -- --id=apro-03               — escenario específico
@@ -14,7 +15,7 @@ import { proveedorScenarios } from './scenarios/proveedor';
 import { aprobadorScenarios } from './scenarios/aprobador';
 import { notificadorScenarios } from './scenarios/notificador';
 import { runScenarios } from './runner/scenario.runner';
-import { printReport, saveReport } from './runner/report.service';
+import { printReport, saveCurlArtifacts, saveReport } from './runner/report.service';
 import { missingVars } from './config/qa-env';
 import { logger } from '../utils/logger.util';
 import type { Scenario } from './types/scenario.types';
@@ -43,6 +44,7 @@ if (showHelp) {
     --tag=<tag>         Filtrar por tag: happy | negative | auth | file-type | hash | crypto | ...
     --id=<id>           Ejecutar un escenario específico: prov-01, apro-03, noti-07, etc.
     --save              Guardar reporte JSON en output/qa/reports/
+    (Siempre)           Guardar cURL + response en output/qa/curls/run-<fecha>/<modulo>/<id>/
     --fixtures          Solo generar archivos de prueba y salir
     --help              Mostrar esta ayuda
 
@@ -117,6 +119,8 @@ async function main() {
 
   // Reporte en consola
   printReport(summary);
+  const curlDir = saveCurlArtifacts(summary);
+  logger.ok(`CURLs QA guardados en: ${curlDir}`);
 
   // Reporte JSON opcional
   if (saveJson) {

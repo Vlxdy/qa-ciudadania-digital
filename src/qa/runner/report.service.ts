@@ -88,3 +88,88 @@ export function saveReport(summary: RunSummary): string {
   fs.writeFileSync(filePath, JSON.stringify(summary, null, 2));
   return filePath;
 }
+
+function shellEscapeSingle(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
+  const request = result.actual.request;
+  if (!request) return;
+
+  const scenarioDir = path.join(baseDir, result.module, result.scenarioId);
+  fs.mkdirSync(scenarioDir, { recursive: true });
+
+  const headers = Object.entries(request.headers)
+    .map(([k, v]) => `  -H ${shellEscapeSingle(`${k}: ${v}`)} \\`)
+    .join('\n');
+  const requestBody = request.body ?? {};
+  const bodyJson = JSON.stringify(requestBody, null, 2);
+  const shouldSplitBody = bodyJson.length > 350;
+
+  let dataPart = '';
+  if (request.encoding === 'json') {
+    if (shouldSplitBody) {
+      fs.writeFileSync(path.join(scenarioDir, 'data.json'), `${bodyJson}\n`);
+      dataPart = '  --data @data.json';
+    } else {
+      dataPart = `  --data ${shellEscapeSingle(bodyJson)}`;
+    }
+  } else {
+    const formPairs = Object.entries(requestBody as Record<string, unknown>)
+      .map(([k, v]) => `  --data-urlencode ${shellEscapeSingle(`${k}=${String(v)}`)} \\`)
+      .join('\n');
+    dataPart = formPairs.slice(0, -2);
+  }
+
+  const curlScript = [
+    '#!/usr/bin/env bash',
+    `# ${result.scenarioId} — ${result.scenarioName}`,
+    `curl -X ${request.method} \\`,
+    `  ${shellEscapeSingle(request.url)} \\`,
+    headers,
+    dataPart,
+    '',
+  ].filter(Boolean).join('\n');
+
+  fs.writeFileSync(path.join(scenarioDir, 'request.sh'), curlScript);
+
+  const responseSnapshot = {
+    savedAt: new Date().toISOString(),
+    scenario: {
+      id: result.scenarioId,
+      name: result.scenarioName,
+      module: result.module,
+      tags: result.tags,
+    },
+    passed: result.passed,
+    failures: result.failures,
+    response: {
+      httpStatus: result.actual.httpStatus,
+      body: result.actual.body,
+      localError: result.actual.localError,
+      durationMs: result.actual.durationMs,
+    },
+  };
+  fs.writeFileSync(
+    path.join(scenarioDir, 'response.json'),
+    `${JSON.stringify(responseSnapshot, null, 2)}\n`,
+  );
+}
+
+/**
+ * Guarda artefactos curl por escenario ejecutado.
+ * Estructura: output/qa/curls/<modulo>/<escenario>/request.sh y data.json (si aplica).
+ */
+export function saveCurlArtifacts(summary: RunSummary): string {
+  const rootDir = path.resolve('./output/qa/curls');
+  fs.mkdirSync(rootDir, { recursive: true });
+  const runTs = new Date().toISOString().replace(/[:.]/g, '-');
+  const dir = path.join(rootDir, `run-${runTs}`);
+  fs.mkdirSync(dir, { recursive: true });
+
+  for (const result of summary.results) {
+    writeCurlForResult(dir, result);
+  }
+  return dir;
+}

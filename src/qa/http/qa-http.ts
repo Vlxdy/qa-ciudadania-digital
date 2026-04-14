@@ -27,10 +27,24 @@ export async function qaPost(
     return {
       httpStatus: response.status,
       body: response.data,
+      request: {
+        method: 'POST',
+        url,
+        headers,
+        body,
+        encoding: 'json',
+      },
       durationMs: Date.now() - start,
     };
   } catch (err) {
     return {
+      request: {
+        method: 'POST',
+        url,
+        headers,
+        body,
+        encoding: 'json',
+      },
       localError: err instanceof Error ? err.message : String(err),
       durationMs: Date.now() - start,
     };
@@ -47,22 +61,37 @@ export async function qaPostForm(
   timeoutMs = 30_000,
 ): Promise<QaResponse> {
   const start = Date.now();
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    ...extraHeaders,
+  };
   try {
     const response = await axios.post(url, params.toString(), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        ...extraHeaders,
-      },
+      headers,
       validateStatus: () => true,
       timeout: timeoutMs,
     });
     return {
       httpStatus: response.status,
       body: response.data,
+      request: {
+        method: 'POST',
+        url,
+        headers,
+        body: Object.fromEntries(params.entries()),
+        encoding: 'form',
+      },
       durationMs: Date.now() - start,
     };
   } catch (err) {
     return {
+      request: {
+        method: 'POST',
+        url,
+        headers,
+        body: Object.fromEntries(params.entries()),
+        encoding: 'form',
+      },
       localError: err instanceof Error ? err.message : String(err),
       durationMs: Date.now() - start,
     };

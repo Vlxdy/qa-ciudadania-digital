@@ -26,9 +26,18 @@ export interface ExpectedOutcome {
 export interface ScenarioActual {
   httpStatus?: number;
   body?: unknown;
+  request?: QaRequestTrace;
   /** Error capturado antes de llegar al HTTP (Zod, throw local, crypto, fs, etc.) */
   localError?: string;
   durationMs: number;
+}
+
+export interface QaRequestTrace {
+  method: 'POST';
+  url: string;
+  headers: Record<string, string>;
+  body?: unknown;
+  encoding: 'json' | 'form';
 }
 
 // ─── Resultado final del escenario ───────────────────────────────────────────
