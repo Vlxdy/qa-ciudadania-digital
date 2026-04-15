@@ -23,6 +23,18 @@ import { scenario as apro19 } from "./apro-19-uuid-invalido";
 import { scenario as apro20 } from "./apro-20-falta-descripcion";
 import { scenario as apro21 } from "./apro-21-multiples-vacio";
 import { scenario as apro22 } from "./apro-22-multiples-tipos-mixtos";
+// JSON
+import { scenario as apro23 } from "./apro-23-json-happy-path-single";
+import { scenario as apro24 } from "./apro-24-json-happy-path-multiple";
+import { scenario as apro25 } from "./apro-25-json-vacio";
+// Verificación de aprobación (/api/documentos/verificar)
+import { scenario as apro26 } from "./apro-26-verificar-pdf-aprobado";
+import { scenario as apro27 } from "./apro-27-verificar-json-aprobado";
+import { scenario as apro28 } from "./apro-28-verificar-sin-token";
+import { scenario as apro29 } from "./apro-29-verificar-token-erroneo";
+import { scenario as apro30 } from "./apro-30-verificar-no-aprobado";
+import { scenario as apro31 } from "./apro-31-verificar-base64-invalido";
+import { scenario as apro32 } from "./apro-32-verificar-sin-campo-archivo";
 
 export const aprobadorScenarios: Scenario[] = [
   apro01,
@@ -49,4 +61,16 @@ export const aprobadorScenarios: Scenario[] = [
   apro20,
   apro21,
   apro22,
+  // JSON
+  apro23,
+  apro24,
+  apro25,
+  // Verificación
+  apro26,
+  apro27,
+  apro28,
+  apro29,
+  apro30,
+  apro31,
+  apro32,
 ];

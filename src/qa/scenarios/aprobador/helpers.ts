@@ -92,7 +92,13 @@ export function buildMultipleBody(
 
 export const singleUrl = () => `${qaEnv.APROBADOR_URL}/api/solicitudes`;
 export const multipleUrl = () => `${qaEnv.APROBADOR_URL}/api/solicitudes/multiples`;
+export const verificarUrl = () => `${qaEnv.APROBADOR_URL}/api/documentos/verificar`;
 export const defaultToken = () => qaEnv.TOKEN_CLIENTE;
+
+/** Lee un archivo y retorna su contenido como string Base64. */
+export function fileToBase64(filePath: string): string {
+  return fs.readFileSync(filePath).toString('base64');
+}
 
 export const fixtures = {
   validPdf: fixturesPaths.validPdf,

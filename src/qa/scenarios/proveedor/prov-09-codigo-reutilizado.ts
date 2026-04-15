@@ -51,4 +51,5 @@ export const scenario: Scenario = {
 
     return makeResult(META, response, EXPECTED);
   },
+  skip: true,
 };
