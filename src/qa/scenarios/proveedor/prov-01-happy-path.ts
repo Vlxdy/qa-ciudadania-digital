@@ -7,7 +7,7 @@ import type { Scenario, ScenarioResult } from "../../types/scenario.types";
 import { makeResult } from "../../types/scenario.types";
 import { qaPostForm } from "../../http/qa-http";
 import { buildTokenPayload, tokenUrl } from "./helpers";
-import { getProveedorSessionStore } from "./services/session.store";
+import { getProveedorSessionStore, setAccessToken } from "./services/session.store";
 
 const META = {
   id: "prov-01",
@@ -46,6 +46,12 @@ export const scenario: Scenario = {
 
     const { payload, headers } = buildTokenPayload({ code });
     const response = await qaPostForm(tokenUrl(), payload, headers);
+
+    // Guardar el access_token en el store para que otros módulos (ej. aprobador) lo usen
+    const token = (response.body as any)?.access_token;
+    if (typeof token === 'string' && token.length > 0) {
+      setAccessToken(token);
+    }
 
     return makeResult(
       META,

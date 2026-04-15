@@ -27,6 +27,7 @@ export interface ProveedorSessionStore {
     lastAuthorizationCode?: string;
     lastCallbackParams?: Record<string, string>;
     startedAt?: string;
+    accessToken?: string;
   };
 }
 
@@ -64,4 +65,8 @@ export function setLastAuthorizationCode(
 ): void {
   store.runtime.lastAuthorizationCode = code;
   store.runtime.lastCallbackParams = callbackParams;
+}
+
+export function setAccessToken(token: string): void {
+  store.runtime.accessToken = token;
 }
