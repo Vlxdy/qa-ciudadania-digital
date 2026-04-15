@@ -48,10 +48,10 @@ export const scenario: Scenario = {
         "Content-Type": "application/json",
       });
 
-      // Si la solicitud falló, retornar sin intentar aprobación
+      // Si la solicitud falló (4xx/5xx o error de red), retornar sin intentar aprobación
       if (
         response.localError ||
-        (response.httpStatus !== undefined && response.httpStatus !== 200)
+        (response.httpStatus !== undefined && response.httpStatus >= 400)
       ) {
         return makeResult(META, response, EXPECTED);
       }
