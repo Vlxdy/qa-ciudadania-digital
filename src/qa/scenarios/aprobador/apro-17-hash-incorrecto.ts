@@ -15,6 +15,8 @@ const META = {
 
 const EXPECTED = {
   success: false,
+  httpStatus: 412,
+  bodyContains: ['El hash generado no coincide con el de la solicitud'],
 };
 
 export const scenario: Scenario = {

@@ -101,4 +101,7 @@ export const fixtures = {
   emptyPdf: fixturesPaths.emptyPdf,
   corruptedPdf: fixturesPaths.corruptedPdf,
   validJson: fixturesPaths.validJson,
+  txtFile: fixturesPaths.txtFile,
+  docxFile: fixturesPaths.docxFile,
+  pngFile: fixturesPaths.pngFile,
 } as const;

@@ -1,5 +1,6 @@
 /**
- * apro-07 — Campo accessToken vacío en el body
+ * apro-08 — Archivo .txt: tipo de documento no soportado por el servidor
+ * Envía el contenido real del .txt con tipoDocumento: 'TXT' — el servidor debe rechazarlo.
  */
 import type {
   ExpectedOutcome,
@@ -11,25 +12,25 @@ import { qaPost } from "../../http/qa-http";
 import { buildSingleBody, singleUrl, defaultToken, fixtures } from "./helpers";
 
 const META = {
-  id: "apro-07",
-  name: "Sin accessToken en body",
+  id: "apro-08.1",
+  name: "Archivo .txt como PDF — tipo no soportado",
   module: "aprobador" as const,
-  tags: ["negative", "auth", "validation"],
+  tags: ["negative", "file-type"],
 };
 
 const EXPECTED: ExpectedOutcome = {
   success: false,
   httpStatus: 400,
-  bodyContains: ["accessToken no debe estar vacío."],
 };
 
 export const scenario: Scenario = {
   ...META,
-  description: "accessToken vacío en el body debe ser rechazado.",
+  description:
+    "Enviar un archivo .txt con tipoDocumento PDF debe ser rechazado por el servidor.",
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildSingleBody(fixtures.validPdf, { accessToken: "" });
+      const body = buildSingleBody(fixtures.txtFile, { tipoDocumento: "PDF" });
       const response = await qaPost(singleUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         "Content-Type": "application/json",
@@ -41,16 +42,6 @@ export const scenario: Scenario = {
         {
           localError: err instanceof Error ? err.message : String(err),
           durationMs: Date.now() - start,
-          request: {
-            method: 'POST' as const,
-            url: singleUrl(),
-            headers: {
-              Authorization: `Bearer ${defaultToken()}`,
-              'Content-Type': 'application/json',
-            },
-            body: undefined,
-            encoding: 'json' as const,
-          },
         },
         EXPECTED,
       );

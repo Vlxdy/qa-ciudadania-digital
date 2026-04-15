@@ -8,6 +8,7 @@ import { scenario as apro06 } from "./apro-06-access-token-malformado";
 import { scenario as apro06_1 } from "./apro-06.1-access-token-malformado2";
 import { scenario as apro07 } from "./apro-07-sin-access-token";
 import { scenario as apro08 } from "./apro-08-tipo-txt";
+import { scenario as apro08_1 } from "./apro-08.1-tipo-txt-como-pdf";
 import { scenario as apro09 } from "./apro-09-tipo-docx";
 import { scenario as apro10 } from "./apro-10-tipo-png";
 import { scenario as apro11 } from "./apro-11-archivo-vacio";
@@ -33,6 +34,7 @@ export const aprobadorScenarios: Scenario[] = [
   apro06_1,
   apro07,
   apro08,
+  apro08_1,
   apro09,
   apro10,
   apro11,
