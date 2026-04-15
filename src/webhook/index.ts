@@ -8,6 +8,15 @@ import dayjs from "dayjs";
 
 dotenv.config();
 
+function setCors(res: http.ServerResponse) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
 const PORT = Number(process.env.WEBHOOK_PORT ?? 4000);
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "./output";
 const FILE_DIR = "./casos";
@@ -126,6 +135,12 @@ function htmlVisitado(mecanismo: string): string {
 
 // ── SERVER ───────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
   const start = Date.now();
 
   const method = req.method ?? "GET";
