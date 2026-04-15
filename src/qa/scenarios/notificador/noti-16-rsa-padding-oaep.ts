@@ -5,7 +5,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildValidBody, notificadorUrl, defaultToken } from './helpers';
+import { buildValidBodyAsync, notificadorUrl, defaultToken } from './helpers';
 
 const META = {
   id: 'noti-16',
@@ -14,20 +14,18 @@ const META = {
   tags: ['config', 'crypto'],
 };
 
-// Ajustar según si el servidor soporta OAEP
 const EXPECTED = {
   success: true,
-  httpStatus: 200,
+  httpStatus: 201,
 };
 
 export const scenario: Scenario = {
   ...META,
-  description:
-    'Body cifrado con RSA-OAEP. Ajustar expected.success según soporte del servidor.',
+  description: 'Body cifrado con RSA-OAEP y hashes reales. Ajustar expected.success según soporte del servidor.',
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildValidBody('OAEP');
+      const body = await buildValidBodyAsync('OAEP');
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',

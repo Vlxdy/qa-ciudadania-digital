@@ -5,7 +5,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildValidBody, notificadorUrl, defaultToken } from './helpers';
+import { buildValidBodyAsync, notificadorUrl, defaultToken } from './helpers';
 import { qaEnv } from '../../config/qa-env';
 
 const META = {
@@ -17,21 +17,21 @@ const META = {
 
 const EXPECTED = {
   success: true,
-  httpStatus: 200,
+  httpStatus: 201,
 };
 
 // Llave e IV fijos de ejemplo (64 y 32 hex chars respectivamente)
 const FIXED_KEY = 'a'.repeat(64); // 32 bytes
-const FIXED_IV = 'b'.repeat(32);  // 16 bytes
+const FIXED_IV  = 'b'.repeat(32); // 16 bytes
 
 export const scenario: Scenario = {
   ...META,
-  description:
-    'Notificación con AES key/IV fijos debe producir ciphertext reproducible y ser aceptada.',
+  description: 'Notificación con AES key/IV fijos debe producir ciphertext reproducible y ser aceptada.',
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildValidBody(qaEnv.RSA_PADDING, FIXED_KEY, FIXED_IV);
+      // buildValidBodyAsync calcula hashes reales y usa el padding correcto del .env
+      const body = await buildValidBodyAsync(qaEnv.RSA_PADDING, FIXED_KEY, FIXED_IV);
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',

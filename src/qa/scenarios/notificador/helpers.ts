@@ -119,12 +119,55 @@ export function buildValidBody(
 /**
  * Variante asíncrona: calcula hashes reales desde las URLs antes de cifrar.
  * Útil en happy-path contra un entorno con PDFs reales accesibles.
+ * @param fixedKeyHex / fixedIvHex — AES fijo para modo reproducible (noti-17).
  */
-export async function buildValidBodyAsync(padding: 'PKCS1' | 'OAEP' = qaEnv.RSA_PADDING): Promise<BodyFinal> {
+export async function buildValidBodyAsync(
+  padding: 'PKCS1' | 'OAEP' = qaEnv.RSA_PADDING,
+  fixedKeyHex?: string,
+  fixedIvHex?: string,
+): Promise<BodyFinal> {
   const pem = readPublicKey();
-  const aes = QaCryptoService.generateAesMaterial();
+  const aes = QaCryptoService.generateAesMaterial(fixedKeyHex, fixedIvHex);
   const input = await buildBaseNotificacionAsync();
   return QaBodyBuilder.build(input, aes, pem, padding);
+}
+
+/**
+ * Reemplaza hashes placeholder de `input` descargando los PDFs de cada URL.
+ * Cualquier hash que coincida con los placeholders internos se recalcula.
+ */
+async function resolveHashes(input: NotificacionInput): Promise<NotificacionInput> {
+  const isPlaceholder = (h: string) =>
+    h === PLACEHOLDER_HASH_ENLACE || h === PLACEHOLDER_HASH_FORMULARIO || h === '';
+
+  const enlaces = await Promise.all(
+    input.notificacion.enlaces.map(async (e) =>
+      isPlaceholder(e.hash ?? '')
+        ? { ...e, hash: await QaFileHashService.downloadAndHash(e.url) }
+        : e,
+    ),
+  );
+
+  const f = input.notificacion.formularioNotificacion;
+  const formularioNotificacion = isPlaceholder(f.hash ?? '')
+    ? { ...f, hash: await QaFileHashService.downloadAndHash(f.url) }
+    : f;
+
+  return { notificacion: { ...input.notificacion, enlaces, formularioNotificacion } };
+}
+
+/**
+ * Versión asíncrona de buildBody: calcula hashes reales para cualquier input
+ * personalizado (escenarios estructurales como noti-18, noti-19, noti-20).
+ */
+export async function buildBodyAsync(
+  input: NotificacionInput,
+  padding: 'PKCS1' | 'OAEP' = qaEnv.RSA_PADDING,
+): Promise<BodyFinal> {
+  const pem = readPublicKey();
+  const aes = QaCryptoService.generateAesMaterial();
+  const withHashes = await resolveHashes(input);
+  return QaBodyBuilder.build(withHashes, aes, pem, padding);
 }
 
 /**
@@ -205,7 +248,8 @@ export async function tryBuildAndSend(input: unknown): Promise<{
   try {
     const pem = readPublicKey();
     const aes = QaCryptoService.generateAesMaterial();
-    const body = QaBodyBuilder.build(input as NotificacionInput, aes, pem, qaEnv.RSA_PADDING);
+    const withHashes = await resolveHashes(input as NotificacionInput);
+    const body = QaBodyBuilder.build(withHashes, aes, pem, qaEnv.RSA_PADDING);
     return await qaPost(notificadorUrl(), body, {
       Authorization: `Bearer ${defaultToken()}`,
       'Content-Type': 'application/json',

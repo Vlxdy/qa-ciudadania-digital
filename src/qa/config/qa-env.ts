@@ -43,12 +43,17 @@ export const qaEnv = {
   NOTI_NOTIFICADO_CIE_NUMERO_DOC: process.env.NOTI_NOTIFICADO_CIE_NUMERO_DOC ?? 'E-123456',
   NOTI_NOTIFICADO_CIE_FECHA_NAC: process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC ?? '1985-03-15',
 
-  // Enlace adjunto principal
+  // Enlace adjunto principal (tipo APROBACION)
   NOTI_ENLACE_URL: process.env.NOTI_ENLACE_URL ?? 'https://example.com/qa/documento.pdf',
   NOTI_ENLACE_ETIQUETA: process.env.NOTI_ENLACE_ETIQUETA ?? 'Documento QA',
   NOTI_ENLACE_TIPO: (process.env.NOTI_ENLACE_TIPO ?? 'APROBACION') as 'FIRMA' | 'APROBACION',
   // Si está vacío, helpers.ts computará el hash descargando el archivo (o usará placeholder)
   NOTI_ENLACE_HASH: process.env.NOTI_ENLACE_HASH ?? '',
+
+  // Enlace para archivo firmado digitalmente (tipo FIRMA) — usado en noti-19 y similares
+  NOTI_ENLACE_FIRMA_URL: process.env.NOTI_ENLACE_FIRMA_URL ?? 'https://example.com/qa/firmado.pdf',
+  NOTI_ENLACE_FIRMA_ETIQUETA: process.env.NOTI_ENLACE_FIRMA_ETIQUETA ?? 'Documento Firmado QA',
+  NOTI_ENLACE_FIRMA_HASH: process.env.NOTI_ENLACE_FIRMA_HASH ?? '',
 
   // Formulario de notificación
   NOTI_FORMULARIO_URL: process.env.NOTI_FORMULARIO_URL ?? 'https://example.com/qa/formulario.pdf',

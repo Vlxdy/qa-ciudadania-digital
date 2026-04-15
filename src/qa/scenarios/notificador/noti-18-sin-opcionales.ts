@@ -4,7 +4,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildBody, notificadorUrl, defaultToken, BASE_NOTIFICACION } from './helpers';
+import { buildBodyAsync, notificadorUrl, defaultToken, BASE_NOTIFICACION } from './helpers';
 import type { NotificacionInput } from '../../../schemas/notification.schema';
 
 const META = {
@@ -16,7 +16,7 @@ const META = {
 
 const EXPECTED = {
   success: true,
-  httpStatus: 200,
+  httpStatus: 201,
 };
 
 export const scenario: Scenario = {
@@ -29,7 +29,7 @@ export const scenario: Scenario = {
         BASE_NOTIFICACION.notificacion;
       const input: NotificacionInput = { notificacion: notificacionSinOpcionales };
 
-      const body = buildBody(input);
+      const body = await buildBodyAsync(input);
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
