@@ -100,37 +100,50 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
   const scenarioDir = path.join(baseDir, result.module, result.scenarioId);
   fs.mkdirSync(scenarioDir, { recursive: true });
 
-  const headers = Object.entries(request.headers)
-    .map(([k, v]) => `  -H ${shellEscapeSingle(`${k}: ${v}`)} \\`)
-    .join('\n');
-  const requestBody = request.body ?? {};
-  const bodyJson = JSON.stringify(requestBody, null, 2);
-  const shouldSplitBody = bodyJson.length > 350;
+  let curlScript: string;
 
-  let dataPart = '';
-  if (request.encoding === 'json') {
-    if (shouldSplitBody) {
-      fs.writeFileSync(path.join(scenarioDir, 'data.json'), `${bodyJson}\n`);
-      dataPart = '  --data @data.json';
-    } else {
-      dataPart = `  --data ${shellEscapeSingle(bodyJson)}`;
-    }
+  if (request.method === 'GET') {
+    // Authorization endpoint: petición GET con todos los parámetros ya en la URL
+    curlScript = [
+      '#!/usr/bin/env bash',
+      `# ${result.scenarioId} — ${result.scenarioName}`,
+      `curl \\`,
+      `  ${shellEscapeSingle(request.url)}`,
+      '',
+    ].join('\n');
   } else {
-    const formPairs = Object.entries(requestBody as Record<string, unknown>)
-      .map(([k, v]) => `  --data-urlencode ${shellEscapeSingle(`${k}=${String(v)}`)} \\`)
+    const headers = Object.entries(request.headers)
+      .map(([k, v]) => `  -H ${shellEscapeSingle(`${k}: ${v}`)} \\`)
       .join('\n');
-    dataPart = formPairs.slice(0, -2);
-  }
+    const requestBody = request.body ?? {};
+    const bodyJson = JSON.stringify(requestBody, null, 2);
+    const shouldSplitBody = bodyJson.length > 350;
 
-  const curlScript = [
-    '#!/usr/bin/env bash',
-    `# ${result.scenarioId} — ${result.scenarioName}`,
-    `curl -X ${request.method} \\`,
-    `  ${shellEscapeSingle(request.url)} \\`,
-    headers,
-    dataPart,
-    '',
-  ].filter(Boolean).join('\n');
+    let dataPart = '';
+    if (request.encoding === 'json') {
+      if (shouldSplitBody) {
+        fs.writeFileSync(path.join(scenarioDir, 'data.json'), `${bodyJson}\n`);
+        dataPart = '  --data @data.json';
+      } else {
+        dataPart = `  --data ${shellEscapeSingle(bodyJson)}`;
+      }
+    } else {
+      const formPairs = Object.entries(requestBody as Record<string, unknown>)
+        .map(([k, v]) => `  --data-urlencode ${shellEscapeSingle(`${k}=${String(v)}`)} \\`)
+        .join('\n');
+      dataPart = formPairs.slice(0, -2);
+    }
+
+    curlScript = [
+      '#!/usr/bin/env bash',
+      `# ${result.scenarioId} — ${result.scenarioName}`,
+      `curl -X ${request.method} \\`,
+      `  ${shellEscapeSingle(request.url)} \\`,
+      headers,
+      dataPart,
+      '',
+    ].filter(Boolean).join('\n');
+  }
 
   fs.writeFileSync(path.join(scenarioDir, 'request.sh'), curlScript);
 

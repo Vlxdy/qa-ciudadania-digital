@@ -8,6 +8,7 @@ import { scenario as prov05 } from './prov-05-redirect-uri-invalido';
 import { scenario as prov06 } from './prov-06-codigo-invalido';
 import { scenario as prov07 } from './prov-07-state-mismatch';
 import { scenario as prov08 } from './prov-08-nonce-mismatch';
+import { scenario as prov09 } from './prov-09-codigo-reutilizado';
 
 export const proveedorScenarios: Scenario[] = [
   prov00,
@@ -19,4 +20,5 @@ export const proveedorScenarios: Scenario[] = [
   prov06,
   prov07,
   prov08,
+  prov09,
 ];

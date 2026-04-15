@@ -2,7 +2,6 @@ import http from "http";
 import { randomBytes } from "crypto";
 import { URL } from "url";
 
-import { ingresarDatosLogin } from "../../../../proveedor/datos";
 import {
   getProveedorSessionStore,
   setLastAuthorizationCode,
@@ -105,7 +104,12 @@ async function waitForCallback(
   });
 }
 
-export async function runQaProveedorLogin(): Promise<Record<string, string>> {
+export interface ProveedorLoginResult {
+  callbackParams: Record<string, string>;
+  authorizationUrl: string;
+}
+
+export async function runQaProveedorLogin(): Promise<ProveedorLoginResult> {
   const { config, runtime } = getProveedorSessionStore();
   runtime.startedAt = new Date().toISOString();
 
@@ -133,6 +137,8 @@ export async function runQaProveedorLogin(): Promise<Record<string, string>> {
     authUrl.searchParams.set("prompt", config.prompt);
   }
 
+  const authorizationUrl = authUrl.toString();
+
   const callbackPromise = isLocalRedirect(config.redirectUri)
     ? waitForCallback(config.redirectUri, config.timeoutMs)
     : null;
@@ -144,7 +150,7 @@ export async function runQaProveedorLogin(): Promise<Record<string, string>> {
   });
   const page = await browser.newPage();
 
-  await page.goto(authUrl.toString(), { waitUntil: "domcontentloaded" });
+  await page.goto(authorizationUrl, { waitUntil: "domcontentloaded" });
   await maybeAutoLogin(page);
 
   let callbackParams: Record<string, string>;
@@ -181,5 +187,5 @@ export async function runQaProveedorLogin(): Promise<Record<string, string>> {
   setLastAuthorizationCode(callbackParams.code, callbackParams);
   debugLog("Authorization code capturado en session store.");
 
-  return callbackParams;
+  return { callbackParams, authorizationUrl };
 }

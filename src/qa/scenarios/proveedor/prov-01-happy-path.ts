@@ -19,7 +19,8 @@ const META = {
 const EXPECTED = {
   success: true,
   httpStatus: 200,
-  bodyContains: ["access_token"],
+  // Doc: la respuesta exitosa del token endpoint debe incluir todos estos campos
+  bodyContains: ["access_token", "expires_in", "id_token", "scope", "token_type"],
 };
 
 export const scenario: Scenario = {
