@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import type { ScenarioResult } from '../types/scenario.types';
+import type { Scenario } from '../types/scenario.types';
 
 export interface RunSummary {
   results: ScenarioResult[];
@@ -9,6 +10,55 @@ export interface RunSummary {
   startedAt: string;
   finishedAt: string;
   durationMs: number;
+}
+
+let lastLiveModule: string | null = null;
+
+export function resetLiveProgress(): void {
+  lastLiveModule = null;
+}
+
+export function printScenarioStartLive(
+  scenario: Scenario,
+  position: number,
+  total: number,
+): void {
+  if (scenario.module !== lastLiveModule) {
+    lastLiveModule = scenario.module;
+    console.log('');
+    console.log(chalk.magenta.bold(`▸ ${scenario.module.toUpperCase()}`));
+  }
+
+  const prefix = chalk.cyan(`[${position}/${total}]`);
+  console.log(`  ${prefix} ${chalk.white(`${scenario.id} — ${scenario.name}`)}`);
+}
+
+export function printScenarioSkippedLive(
+  scenario: Scenario,
+  reason: string,
+): void {
+  console.log(
+    `     ${chalk.yellow('⊘')} ${chalk.yellow(`${scenario.id} omitido`)} ${chalk.gray(`(${reason})`)}`,
+  );
+}
+
+export function printScenarioResultLive(result: ScenarioResult): void {
+  const dur = chalk.gray(`(${result.actual.durationMs}ms)`);
+  if (result.passed) {
+    console.log(`     ${chalk.green.bold('✔')} ${chalk.green('OK')} ${dur}`);
+    return;
+  }
+
+  console.log(`     ${chalk.red.bold('✖')} ${chalk.red('FAIL')} ${dur}`);
+  for (const failure of result.failures) {
+    console.log(`       ${chalk.red('└─')} ${chalk.red(failure)}`);
+  }
+  if (result.actual.localError) {
+    console.log(`       ${chalk.gray('error:')} ${chalk.gray(result.actual.localError.slice(0, 120))}`);
+  }
+  if (result.actual.httpStatus) {
+    console.log(`       ${chalk.gray('http:')} ${chalk.gray(String(result.actual.httpStatus))}`);
+  }
 }
 
 // ─── Consola ──────────────────────────────────────────────────────────────────

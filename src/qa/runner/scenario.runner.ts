@@ -7,6 +7,26 @@ export interface ScenarioFilter {
   id?: string;
 }
 
+export interface ScenarioRunHooks {
+  onScenarioStart?: (context: {
+    scenario: Scenario;
+    index: number;
+    total: number;
+  }) => void;
+  onScenarioResult?: (context: {
+    scenario: Scenario;
+    result: ScenarioResult;
+    index: number;
+    total: number;
+  }) => void;
+  onScenarioSkipped?: (context: {
+    scenario: Scenario;
+    index: number;
+    total: number;
+    reason: string;
+  }) => void;
+}
+
 function applyFilter(scenarios: Scenario[], filter: ScenarioFilter): Scenario[] {
   return scenarios.filter((s) => {
     if (filter.module && s.module !== filter.module) return false;
@@ -23,6 +43,7 @@ function applyFilter(scenarios: Scenario[], filter: ScenarioFilter): Scenario[] 
 export async function runScenarios(
   scenarios: Scenario[],
   filter: ScenarioFilter = {},
+  hooks: ScenarioRunHooks = {},
 ): Promise<RunSummary> {
   const filtered = applyFilter(scenarios, filter);
   const startedAt = new Date().toISOString();
@@ -31,18 +52,38 @@ export async function runScenarios(
   const results: ScenarioResult[] = [];
   const skipped: RunSummary['skipped'] = [];
 
-  for (const scenario of filtered) {
+  for (const [index, scenario] of filtered.entries()) {
+    const position = index + 1;
+
+    hooks.onScenarioStart?.({
+      scenario,
+      index: position,
+      total: filtered.length,
+    });
+
     if (scenario.skip) {
       skipped.push({ id: scenario.id, name: scenario.name, reason: 'skip: true' });
+      hooks.onScenarioSkipped?.({
+        scenario,
+        index: position,
+        total: filtered.length,
+        reason: 'skip: true',
+      });
       continue;
     }
 
     try {
       const result = await scenario.run();
       results.push(result);
+      hooks.onScenarioResult?.({
+        scenario,
+        result,
+        index: position,
+        total: filtered.length,
+      });
     } catch (unexpectedErr) {
       // El run() debería capturar sus propios errores; esto es seguridad extra
-      results.push({
+      const result: ScenarioResult = {
         scenarioId: scenario.id,
         scenarioName: scenario.name,
         module: scenario.module,
@@ -54,6 +95,13 @@ export async function runScenarios(
         },
         expected: scenario.run.toString().includes('expected') ? {} as any : { success: true },
         failures: ['El runner capturó una excepción no manejada'],
+      };
+      results.push(result);
+      hooks.onScenarioResult?.({
+        scenario,
+        result,
+        index: position,
+        total: filtered.length,
       });
     }
   }

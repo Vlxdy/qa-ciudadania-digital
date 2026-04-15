@@ -15,7 +15,15 @@ import { proveedorScenarios } from './scenarios/proveedor';
 import { aprobadorScenarios } from './scenarios/aprobador';
 import { notificadorScenarios } from './scenarios/notificador';
 import { runScenarios } from './runner/scenario.runner';
-import { printReport, saveCurlArtifacts, saveReport } from './runner/report.service';
+import {
+  printReport,
+  printScenarioResultLive,
+  printScenarioSkippedLive,
+  printScenarioStartLive,
+  resetLiveProgress,
+  saveCurlArtifacts,
+  saveReport,
+} from './runner/report.service';
 import { missingVars } from './config/qa-env';
 import { logger } from '../utils/logger.util';
 import type { Scenario } from './types/scenario.types';
@@ -111,10 +119,21 @@ async function main() {
   if (idFilter) logger.info(`ID: ${idFilter}`);
 
   // Ejecutar
+  resetLiveProgress();
   const summary = await runScenarios(allScenarios, {
     module: moduleFilter,
     tag: tagFilter,
     id: idFilter,
+  }, {
+    onScenarioStart: ({ scenario, index, total }) => {
+      printScenarioStartLive(scenario, index, total);
+    },
+    onScenarioResult: ({ result }) => {
+      printScenarioResultLive(result);
+    },
+    onScenarioSkipped: ({ scenario, reason }) => {
+      printScenarioSkippedLive(scenario, reason);
+    },
   });
 
   // Reporte en consola
