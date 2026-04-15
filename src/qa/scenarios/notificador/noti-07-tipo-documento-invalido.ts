@@ -3,7 +3,7 @@
  */
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
-import { validateInput, BASE_NOTIFICACION } from './helpers';
+import { validateInput, tryBuildAndSend, BASE_NOTIFICACION } from './helpers';
 
 const META = {
   id: 'noti-07',
@@ -21,20 +21,15 @@ export const scenario: Scenario = {
   ...META,
   description: 'tipoDocumento con valor no permitido debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const start = Date.now();
     const input = {
       notificacion: {
         ...BASE_NOTIFICACION.notificacion,
-        notificador: {
-          ...BASE_NOTIFICACION.notificacion.notificador,
-          tipoDocumento: 'PASAPORTE', // No está en el enum CI | CIE
-        },
+        notificador: { ...BASE_NOTIFICACION.notificacion.notificador, tipoDocumento: 'PASAPORTE' },
       },
     };
     const validation = validateInput(input);
-    if (!validation.valid) {
-      return makeResult(META, { localError: validation.error, durationMs: Date.now() - start }, EXPECTED);
-    }
-    return makeResult(META, { durationMs: Date.now() - start }, EXPECTED);
+    const localError = validation.valid ? undefined : validation.error;
+    const httpResult = await tryBuildAndSend(input);
+    return makeResult(META, { ...httpResult, localError }, EXPECTED);
   },
 };

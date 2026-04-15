@@ -6,6 +6,7 @@ import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
 import { buildValidBody, notificadorUrl, defaultToken } from './helpers';
+import { qaEnv } from '../../config/qa-env';
 
 const META = {
   id: 'noti-17',
@@ -30,7 +31,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildValidBody('PKCS1', FIXED_KEY, FIXED_IV);
+      const body = buildValidBody(qaEnv.RSA_PADDING, FIXED_KEY, FIXED_IV);
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',

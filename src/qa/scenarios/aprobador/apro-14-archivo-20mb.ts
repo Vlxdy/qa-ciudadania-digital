@@ -11,6 +11,7 @@ import type {
 import { makeResult } from "../../types/scenario.types";
 import { qaPost } from "../../http/qa-http";
 import { buildSingleBody, singleUrl, defaultToken, fixtures } from "./helpers";
+import { getProveedorSessionStore } from "../proveedor/services/session.store";
 
 const META = {
   id: "apro-14",
@@ -34,7 +35,8 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildSingleBody(fixtures.validPdf20mb);
+      const accessToken = getProveedorSessionStore().runtime.accessToken;
+      const body = buildSingleBody(fixtures.validPdf20mb, { accessToken });
       const response = await qaPost(
         singleUrl(),
         body,

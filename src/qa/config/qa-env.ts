@@ -13,11 +13,51 @@ export const qaEnv = {
   ACCESS_TOKEN_CIUDADANIA: process.env.ACCESS_TOKEN_CIUDADANIA ?? '',
   HASH_MODE: (process.env.HASH_MODE ?? 'BUFFER') as 'BUFFER' | 'BASE64',
 
-  // ─── Notificador ──────────────────────────────────────────────────────────
+  // ─── Notificador — conexión ───────────────────────────────────────────────
   ISSUER_NOTIFICADOR: process.env.ISSUER_NOTIFICADOR ?? '',
   TOKEN_CONFIGURACION: process.env.TOKEN_CONFIGURACION ?? '',
   RSA_PUBLIC_KEY_PATH: process.env.RSA_PUBLIC_KEY_PATH ?? './keys/public.pem',
   RSA_PADDING: (process.env.RSA_PADDING ?? 'PKCS1') as 'PKCS1' | 'OAEP',
+
+  // ─── Notificador — datos de la notificación ───────────────────────────────
+  // Contenido de la notificación
+  NOTI_TITULO: process.env.NOTI_TITULO ?? 'Notificación de prueba QA',
+  NOTI_DESCRIPCION: process.env.NOTI_DESCRIPCION ?? 'Se notifica al ciudadano sobre el proceso de prueba automatizada.',
+
+  // Ciudadano notificador
+  NOTI_NOTIFICADOR_TIPO_DOC: (process.env.NOTI_NOTIFICADOR_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
+  NOTI_NOTIFICADOR_NUMERO_DOC: process.env.NOTI_NOTIFICADOR_NUMERO_DOC ?? '4160481',
+  NOTI_NOTIFICADOR_FECHA_NAC: process.env.NOTI_NOTIFICADOR_FECHA_NAC ?? '1960-05-26',
+
+  // Ciudadano autoridad
+  NOTI_AUTORIDAD_TIPO_DOC: (process.env.NOTI_AUTORIDAD_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
+  NOTI_AUTORIDAD_NUMERO_DOC: process.env.NOTI_AUTORIDAD_NUMERO_DOC ?? '4160481',
+  NOTI_AUTORIDAD_FECHA_NAC: process.env.NOTI_AUTORIDAD_FECHA_NAC ?? '1960-05-26',
+
+  // Ciudadano notificado principal (CI)
+  NOTI_NOTIFICADO_TIPO_DOC: (process.env.NOTI_NOTIFICADO_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
+  NOTI_NOTIFICADO_NUMERO_DOC: process.env.NOTI_NOTIFICADO_NUMERO_DOC ?? '5585535',
+  NOTI_NOTIFICADO_FECHA_NAC: process.env.NOTI_NOTIFICADO_FECHA_NAC ?? '1974-01-31',
+
+  // Ciudadano notificado secundario (para escenario CIE)
+  NOTI_NOTIFICADO_CIE_NUMERO_DOC: process.env.NOTI_NOTIFICADO_CIE_NUMERO_DOC ?? 'E-123456',
+  NOTI_NOTIFICADO_CIE_FECHA_NAC: process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC ?? '1985-03-15',
+
+  // Enlace adjunto principal
+  NOTI_ENLACE_URL: process.env.NOTI_ENLACE_URL ?? 'https://example.com/qa/documento.pdf',
+  NOTI_ENLACE_ETIQUETA: process.env.NOTI_ENLACE_ETIQUETA ?? 'Documento QA',
+  NOTI_ENLACE_TIPO: (process.env.NOTI_ENLACE_TIPO ?? 'APROBACION') as 'FIRMA' | 'APROBACION',
+  // Si está vacío, helpers.ts computará el hash descargando el archivo (o usará placeholder)
+  NOTI_ENLACE_HASH: process.env.NOTI_ENLACE_HASH ?? '',
+
+  // Formulario de notificación
+  NOTI_FORMULARIO_URL: process.env.NOTI_FORMULARIO_URL ?? 'https://example.com/qa/formulario.pdf',
+  NOTI_FORMULARIO_ETIQUETA: process.env.NOTI_FORMULARIO_ETIQUETA ?? 'Formulario QA',
+  NOTI_FORMULARIO_TIPO: (process.env.NOTI_FORMULARIO_TIPO ?? 'FIRMA') as 'FIRMA' | 'APROBACION',
+  NOTI_FORMULARIO_HASH: process.env.NOTI_FORMULARIO_HASH ?? '',
+
+  // Entidad notificadora (opcional — omitir para usar la entidad origen)
+  NOTI_ENTIDAD_NOTIFICADORA: process.env.NOTI_ENTIDAD_NOTIFICADORA ?? '',
 
   // ─── Proveedor ────────────────────────────────────────────────────────────
   OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',

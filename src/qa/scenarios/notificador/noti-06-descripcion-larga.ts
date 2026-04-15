@@ -3,7 +3,7 @@
  */
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
-import { validateInput, BASE_NOTIFICACION } from './helpers';
+import { validateInput, tryBuildAndSend, BASE_NOTIFICACION } from './helpers';
 
 const META = {
   id: 'noti-06',
@@ -21,17 +21,10 @@ export const scenario: Scenario = {
   ...META,
   description: 'descripcion de 1201+ caracteres debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const start = Date.now();
-    const input = {
-      notificacion: {
-        ...BASE_NOTIFICACION.notificacion,
-        descripcion: 'X'.repeat(1201), // 1201 > 1200 máximo
-      },
-    };
+    const input = { notificacion: { ...BASE_NOTIFICACION.notificacion, descripcion: 'X'.repeat(1201) } };
     const validation = validateInput(input);
-    if (!validation.valid) {
-      return makeResult(META, { localError: validation.error, durationMs: Date.now() - start }, EXPECTED);
-    }
-    return makeResult(META, { durationMs: Date.now() - start }, EXPECTED);
+    const localError = validation.valid ? undefined : validation.error;
+    const httpResult = await tryBuildAndSend(input);
+    return makeResult(META, { ...httpResult, localError }, EXPECTED);
   },
 };

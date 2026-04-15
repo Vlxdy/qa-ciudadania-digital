@@ -3,7 +3,7 @@
  */
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
-import { validateInput, BASE_NOTIFICACION } from './helpers';
+import { validateInput, tryBuildAndSend, BASE_NOTIFICACION } from './helpers';
 
 const META = {
   id: 'noti-10',
@@ -17,27 +17,20 @@ const EXPECTED = {
   validationFields: ['notificacion.notificados'],
 };
 
-const persona = {
-  tipoDocumento: 'CI' as const,
-  numeroDocumento: '5585535',
-  fechaNacimiento: '1974-01-31',
-};
-
 export const scenario: Scenario = {
   ...META,
   description: '11 notificados (> máximo 10) debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const start = Date.now();
+    const persona = BASE_NOTIFICACION.notificacion.notificados[0];
     const input = {
       notificacion: {
         ...BASE_NOTIFICACION.notificacion,
-        notificados: Array(11).fill(persona), // 11 > máximo 10
+        notificados: Array(11).fill(persona),
       },
     };
     const validation = validateInput(input);
-    if (!validation.valid) {
-      return makeResult(META, { localError: validation.error, durationMs: Date.now() - start }, EXPECTED);
-    }
-    return makeResult(META, { durationMs: Date.now() - start }, EXPECTED);
+    const localError = validation.valid ? undefined : validation.error;
+    const httpResult = await tryBuildAndSend(input);
+    return makeResult(META, { ...httpResult, localError }, EXPECTED);
   },
 };

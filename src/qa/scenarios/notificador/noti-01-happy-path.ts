@@ -4,7 +4,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildValidBody, notificadorUrl, defaultToken } from './helpers';
+import { buildValidBodyAsync, notificadorUrl, defaultToken } from './helpers';
 
 const META = {
   id: 'noti-01',
@@ -15,7 +15,8 @@ const META = {
 
 const EXPECTED = {
   success: true,
-  httpStatus: 200,
+  httpStatus: 201,
+  bodyContains: ['codigoSeguimiento'],
 };
 
 export const scenario: Scenario = {
@@ -24,7 +25,10 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildValidBody();
+      // buildValidBodyAsync descarga los PDFs de las URLs configuradas en NOTI_ENLACE_URL /
+      // NOTI_FORMULARIO_URL y calcula sus hashes SHA-256 reales cuando NOTI_ENLACE_HASH /
+      // NOTI_FORMULARIO_HASH están vacíos en el .env.
+      const body = await buildValidBodyAsync();
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',

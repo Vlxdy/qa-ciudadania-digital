@@ -3,7 +3,7 @@
  */
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
-import { validateInput, BASE_NOTIFICACION } from './helpers';
+import { validateInput, tryBuildAndSend, BASE_NOTIFICACION } from './helpers';
 
 const META = {
   id: 'noti-14',
@@ -21,22 +21,15 @@ export const scenario: Scenario = {
   ...META,
   description: 'Tipo de enlace con valor no permitido debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const start = Date.now();
     const input = {
       notificacion: {
         ...BASE_NOTIFICACION.notificacion,
-        enlaces: [
-          {
-            ...BASE_NOTIFICACION.notificacion.enlaces[0],
-            tipo: 'LECTURA', // No está en el enum FIRMA | APROBACION
-          },
-        ],
+        enlaces: [{ ...BASE_NOTIFICACION.notificacion.enlaces[0], tipo: 'LECTURA' }],
       },
     };
     const validation = validateInput(input);
-    if (!validation.valid) {
-      return makeResult(META, { localError: validation.error, durationMs: Date.now() - start }, EXPECTED);
-    }
-    return makeResult(META, { durationMs: Date.now() - start }, EXPECTED);
+    const localError = validation.valid ? undefined : validation.error;
+    const httpResult = await tryBuildAndSend(input);
+    return makeResult(META, { ...httpResult, localError }, EXPECTED);
   },
 };

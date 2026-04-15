@@ -95,7 +95,36 @@ function shellEscapeSingle(value: string): string {
 
 function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
   const request = result.actual.request;
-  if (!request) return;
+
+  // Sin request (p.ej. error local antes de construir el body): guardar script de documentación
+  if (!request) {
+    const scenarioDir = path.join(baseDir, result.module, result.scenarioId);
+    fs.mkdirSync(scenarioDir, { recursive: true });
+
+    const errorLine = result.actual.localError
+      ? `# Error local: ${result.actual.localError.slice(0, 200)}`
+      : '# (sin error local registrado)';
+
+    const curlScript = [
+      '#!/usr/bin/env bash',
+      `# ${result.scenarioId} — ${result.scenarioName}`,
+      '# Este escenario produjo un error local antes de enviar la petición HTTP.',
+      errorLine,
+      '',
+    ].join('\n');
+
+    fs.writeFileSync(path.join(scenarioDir, 'request.sh'), curlScript);
+
+    const responseSnapshot = {
+      savedAt: new Date().toISOString(),
+      scenario: { id: result.scenarioId, name: result.scenarioName, module: result.module, tags: result.tags },
+      passed: result.passed,
+      failures: result.failures,
+      response: { localError: result.actual.localError, durationMs: result.actual.durationMs },
+    };
+    fs.writeFileSync(path.join(scenarioDir, 'response.json'), `${JSON.stringify(responseSnapshot, null, 2)}\n`);
+    return;
+  }
 
   const scenarioDir = path.join(baseDir, result.module, result.scenarioId);
   fs.mkdirSync(scenarioDir, { recursive: true });

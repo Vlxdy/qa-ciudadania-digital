@@ -4,9 +4,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { QaCryptoService } from '../../services/qa-crypto.service';
-import { QaBodyBuilder } from '../../services/qa-body-builder';
-import { readPublicKey, notificadorUrl, defaultToken } from './helpers';
+import { buildBody, notificadorUrl, defaultToken, BASE_NOTIFICACION } from './helpers';
 import type { NotificacionInput } from '../../../schemas/notification.schema';
 
 const META = {
@@ -21,29 +19,17 @@ const EXPECTED = {
   httpStatus: 200,
 };
 
-const INPUT_SIN_OPCIONALES: NotificacionInput = {
-  notificacion: {
-    // Sin datosAdicionalesEntidad
-    // Sin entidadNotificadora
-    titulo: 'Notificación QA sin opcionales',
-    descripcion: 'Prueba sin campos opcionales.',
-    notificador: { tipoDocumento: 'CI', numeroDocumento: '4160481', fechaNacimiento: '1960-05-26' },
-    autoridad: { tipoDocumento: 'CI', numeroDocumento: '4160481', fechaNacimiento: '1960-05-26' },
-    notificados: [{ tipoDocumento: 'CI', numeroDocumento: '5585535', fechaNacimiento: '1974-01-31' }],
-    enlaces: [{ etiqueta: 'Doc', url: 'https://example.com/doc.pdf', tipo: 'FIRMA', hash: 'a'.repeat(64) }],
-    formularioNotificacion: { etiqueta: 'Form', url: 'https://example.com/form.pdf', tipo: 'FIRMA', hash: 'b'.repeat(64) },
-  },
-};
-
 export const scenario: Scenario = {
   ...META,
-  description: 'Notificación sin campos opcionales debe ser aceptada.',
+  description: 'Notificación sin campos opcionales (sin datosAdicionalesEntidad ni entidadNotificadora) debe ser aceptada.',
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const pem = readPublicKey();
-      const aes = QaCryptoService.generateAesMaterial();
-      const body = QaBodyBuilder.build(INPUT_SIN_OPCIONALES, aes, pem);
+      const { datosAdicionalesEntidad: _dae, entidadNotificadora: _ent, ...notificacionSinOpcionales } =
+        BASE_NOTIFICACION.notificacion;
+      const input: NotificacionInput = { notificacion: notificacionSinOpcionales };
+
+      const body = buildBody(input);
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
