@@ -92,6 +92,49 @@ export async function qaGet(
 }
 
 /**
+ * PATCH genérico. validateStatus: () => true para capturar cualquier código HTTP.
+ */
+export async function qaPatch(
+  url: string,
+  body: unknown,
+  headers: Record<string, string>,
+  timeoutMs = 30_000,
+): Promise<QaResponse> {
+  const start = Date.now();
+  try {
+    const response = await axios.patch(url, body, {
+      headers,
+      validateStatus: () => true,
+      timeout: timeoutMs,
+    });
+    return {
+      httpStatus: response.status,
+      body: response.data,
+      request: {
+        method: 'PATCH',
+        url,
+        headers,
+        body,
+        encoding: 'json',
+      },
+      durationMs: Date.now() - start,
+    };
+  } catch (err) {
+    return {
+      request: {
+        method: 'PATCH',
+        url,
+        headers,
+        body,
+        encoding: 'json',
+      },
+      localError: err instanceof Error ? err.message : String(err),
+      durationMs: Date.now() - start,
+    };
+  }
+}
+
+/**
  * POST con body application/x-www-form-urlencoded (token endpoint OAuth).
  */
 export async function qaPostForm(

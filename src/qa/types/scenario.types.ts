@@ -33,7 +33,7 @@ export interface ScenarioActual {
 }
 
 export interface QaRequestTrace {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'PATCH';
   url: string;
   headers: Record<string, string>;
   body?: unknown;
