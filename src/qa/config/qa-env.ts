@@ -64,6 +64,13 @@ export const qaEnv = {
   // Entidad notificadora (opcional — omitir para usar la entidad origen)
   NOTI_ENTIDAD_NOTIFICADORA: process.env.NOTI_ENTIDAD_NOTIFICADORA ?? '',
 
+  // ─── Notificador Jurídico (entidad pública) ───────────────────────────────
+  // Código gob.bo de la entidad principal que recibirá la notificación jurídica
+  NOTI_JURIDICO_CODIGO_ENTIDAD: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD ?? '340',
+
+  // Código gob.bo de una segunda entidad (para escenarios de múltiples notificados)
+  NOTI_JURIDICO_CODIGO_ENTIDAD_2: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD_2 ?? '341',
+
   // ─── Proveedor ────────────────────────────────────────────────────────────
   OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',
   OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID ?? '',

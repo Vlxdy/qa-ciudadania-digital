@@ -1,0 +1,60 @@
+/**
+ * juri-21 — Múltiples enlaces con tipos FIRMA y APROBACION en /juridico
+ */
+import type { Scenario, ScenarioResult } from '../../../types/scenario.types';
+import { makeResult } from '../../../types/scenario.types';
+import { qaPost } from '../../../http/qa-http';
+import { buildBodyJuridicoAsync, notificadorJuridicoUrl, defaultJuridicoToken, BASE_JURIDICO } from './helpers';
+import type { NotificacionJuridicoInput } from '../../../../schemas/notification-juridico.schema';
+import { qaEnv } from '../../../config/qa-env';
+
+const META = {
+  id: 'juri-21',
+  name: 'Múltiples enlaces tipos mixtos — jurídico',
+  module: 'notificador' as const,
+  tags: ['positive', 'structure', 'juridico'],
+};
+
+const EXPECTED = {
+  success: true,
+  httpStatus: 201,
+};
+
+export const scenario: Scenario = {
+  ...META,
+  description: '3 enlaces con tipos FIRMA y APROBACION mezclados en /juridico deben ser aceptados.',
+  run: async (): Promise<ScenarioResult> => {
+    const start = Date.now();
+    try {
+      const enlaceAprobacion = BASE_JURIDICO.notificacion.enlaces[0];
+      const enlaceFirma = {
+        url: qaEnv.NOTI_ENLACE_FIRMA_URL,
+        etiqueta: qaEnv.NOTI_ENLACE_FIRMA_ETIQUETA,
+        tipo: 'FIRMA' as const,
+        hash: qaEnv.NOTI_ENLACE_FIRMA_HASH || '',
+      };
+      const input: NotificacionJuridicoInput = {
+        notificacion: {
+          ...BASE_JURIDICO.notificacion,
+          enlaces: [
+            { ...enlaceFirma, etiqueta: 'Enlace Firmado 1' },
+            { ...enlaceAprobacion, etiqueta: 'Enlace Aprobacion', tipo: 'APROBACION' },
+            { ...enlaceFirma, etiqueta: 'Enlace Firmado 2' },
+          ],
+        },
+      };
+
+      const body = await buildBodyJuridicoAsync(input);
+      const response = await qaPost(notificadorJuridicoUrl(), body, {
+        Authorization: `Bearer ${defaultJuridicoToken()}`,
+        'Content-Type': 'application/json',
+      });
+      return makeResult(META, response, EXPECTED);
+    } catch (err) {
+      return makeResult(META, {
+        localError: err instanceof Error ? err.message : String(err),
+        durationMs: Date.now() - start,
+      }, EXPECTED);
+    }
+  },
+};

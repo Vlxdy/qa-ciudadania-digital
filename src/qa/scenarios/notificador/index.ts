@@ -19,10 +19,12 @@ import { scenario as noti17 } from './noti-17-aes-fijo';
 import { scenario as noti18 } from './noti-18-sin-opcionales';
 import { scenario as noti19 } from './noti-19-multiples-enlaces';
 import { scenario as noti20 } from './noti-20-notificados-cie';
+import { juridicosScenarios } from './juridico';
 
 export const notificadorScenarios: Scenario[] = [
   noti01, noti02, noti03, noti04, noti05,
   noti06, noti07, noti08, noti09, noti10,
   noti11, noti12, noti13, noti14, noti15,
   noti16, noti17, noti18, noti19, noti20,
+  ...juridicosScenarios,
 ];
