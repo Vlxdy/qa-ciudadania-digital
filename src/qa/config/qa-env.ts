@@ -76,6 +76,28 @@ export const qaEnv = {
   NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: process.env.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? 'NONE',
   NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC: process.env.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC ?? 'NONE',
 
+  // ─── Avisos ───────────────────────────────────────────────────────────────
+  // URL base del servicio de avisos (generada en módulo Developer al crear plantilla)
+  AVISOS_URL_BASE: process.env.AVISOS_URL_BASE ?? '',
+
+  // Token Bearer generado en módulo Developer al crear la plantilla de aviso
+  AVISOS_TOKEN: process.env.AVISOS_TOKEN ?? '',
+
+  // Código UUID de la plantilla de aviso creada en Developer
+  AVISOS_CODIGO_PLANTILLA: process.env.AVISOS_CODIGO_PLANTILLA ?? '',
+
+  // UUID del ciudadano digital de prueba (receptor principal del aviso)
+  AVISOS_UUID_CIUDADANO: process.env.AVISOS_UUID_CIUDADANO ?? '',
+
+  // UUID de un segundo ciudadano (para escenarios de envío múltiple)
+  AVISOS_UUID_CIUDADANO_2: process.env.AVISOS_UUID_CIUDADANO_2 ?? '',
+
+  // Parámetro dinámico 1 de la plantilla (se reemplaza en {{1}})
+  AVISOS_PARAMETRO_1: process.env.AVISOS_PARAMETRO_1 ?? 'Ciudadano QA',
+
+  // Fragmento adicional para URL de redirección (parametroRedireccion)
+  AVISOS_PARAMETRO_REDIRECCION: process.env.AVISOS_PARAMETRO_REDIRECCION ?? 'tramite/qa-test',
+
   // ─── Notificador Jurídico (entidad pública) ───────────────────────────────
   // Código gob.bo de la entidad principal que recibirá la notificación jurídica
   NOTI_JURIDICO_CODIGO_ENTIDAD: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD ?? '340',
@@ -98,7 +120,7 @@ export const qaEnv = {
 } as const;
 
 /** Retorna los nombres de las vars vacías para un módulo dado */
-export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor'): string[] {
+export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 'avisos'): string[] {
   const checks: Record<typeof module, Record<string, string>> = {
     aprobador: {
       APROBADOR_URL: qaEnv.APROBADOR_URL,
@@ -112,6 +134,12 @@ export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor'): 
       OIDC_ISSUER: qaEnv.OIDC_ISSUER,
       OIDC_CLIENT_ID: qaEnv.OIDC_CLIENT_ID,
       OIDC_REDIRECT_URI: qaEnv.OIDC_REDIRECT_URI,
+    },
+    avisos: {
+      AVISOS_URL_BASE: qaEnv.AVISOS_URL_BASE,
+      AVISOS_TOKEN: qaEnv.AVISOS_TOKEN,
+      AVISOS_CODIGO_PLANTILLA: qaEnv.AVISOS_CODIGO_PLANTILLA,
+      AVISOS_UUID_CIUDADANO: qaEnv.AVISOS_UUID_CIUDADANO,
     },
   };
   return Object.entries(checks[module])
