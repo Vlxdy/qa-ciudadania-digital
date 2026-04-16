@@ -26,13 +26,13 @@ export const qaEnv = {
 
   // Ciudadano notificador
   NOTI_NOTIFICADOR_TIPO_DOC: (process.env.NOTI_NOTIFICADOR_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  NOTI_NOTIFICADOR_NUMERO_DOC: process.env.NOTI_NOTIFICADOR_NUMERO_DOC ?? '4160481',
-  NOTI_NOTIFICADOR_FECHA_NAC: process.env.NOTI_NOTIFICADOR_FECHA_NAC ?? '1960-05-26',
+  NOTI_NOTIFICADOR_NUMERO_DOC: process.env.NOTI_NOTIFICADOR_NUMERO_DOC ?? 'NONE',
+  NOTI_NOTIFICADOR_FECHA_NAC: process.env.NOTI_NOTIFICADOR_FECHA_NAC ?? 'NONE',
 
   // Ciudadano autoridad
   NOTI_AUTORIDAD_TIPO_DOC: (process.env.NOTI_AUTORIDAD_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  NOTI_AUTORIDAD_NUMERO_DOC: process.env.NOTI_AUTORIDAD_NUMERO_DOC ?? '4160481',
-  NOTI_AUTORIDAD_FECHA_NAC: process.env.NOTI_AUTORIDAD_FECHA_NAC ?? '1960-05-26',
+  NOTI_AUTORIDAD_NUMERO_DOC: process.env.NOTI_AUTORIDAD_NUMERO_DOC ?? 'NONE',
+  NOTI_AUTORIDAD_FECHA_NAC: process.env.NOTI_AUTORIDAD_FECHA_NAC ?? 'NONE',
 
   // Ciudadano notificado principal (CI)
   NOTI_NOTIFICADO_TIPO_DOC: (process.env.NOTI_NOTIFICADO_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
@@ -40,8 +40,8 @@ export const qaEnv = {
   NOTI_NOTIFICADO_FECHA_NAC: process.env.NOTI_NOTIFICADO_FECHA_NAC ?? '1974-01-31',
 
   // Ciudadano notificado secundario (para escenario CIE)
-  NOTI_NOTIFICADO_CIE_NUMERO_DOC: process.env.NOTI_NOTIFICADO_CIE_NUMERO_DOC ?? 'E-123456',
-  NOTI_NOTIFICADO_CIE_FECHA_NAC: process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC ?? '1985-03-15',
+  NOTI_NOTIFICADO_CIE_NUMERO_DOC: process.env.NOTI_NOTIFICADO_CIE_NUMERO_DOC ?? 'NONE',
+  NOTI_NOTIFICADO_CIE_FECHA_NAC: process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC ?? 'NONE',
 
   // Enlace adjunto principal (tipo APROBACION)
   NOTI_ENLACE_URL: process.env.NOTI_ENLACE_URL ?? 'https://example.com/qa/documento.pdf',
@@ -63,6 +63,18 @@ export const qaEnv = {
 
   // Entidad notificadora (opcional — omitir para usar la entidad origen)
   NOTI_ENTIDAD_NOTIFICADORA: process.env.NOTI_ENTIDAD_NOTIFICADORA ?? '',
+
+  // ─── Delegado de Entidad Pública ─────────────────────────────────────────
+  // Código gob.bo de la entidad para la cual se solicita el delegado
+  NOTI_DELEGADO_CODIGO_ENTIDAD: process.env.NOTI_DELEGADO_CODIGO_ENTIDAD ?? '97',
+
+  // Descripción de la solicitud de delegado
+  NOTI_DELEGADO_DESCRIPCION: process.env.NOTI_DELEGADO_DESCRIPCION ?? 'Solicitud de delegación de buzón de entidad para pruebas QA.',
+
+  // Representante legal que recibirá la autorización de delegación
+  NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC: (process.env.NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
+  NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: process.env.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? 'NONE',
+  NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC: process.env.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC ?? 'NONE',
 
   // ─── Notificador Jurídico (entidad pública) ───────────────────────────────
   // Código gob.bo de la entidad principal que recibirá la notificación jurídica

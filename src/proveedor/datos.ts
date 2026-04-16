@@ -1,9 +1,12 @@
+import { log } from "console";
 import { logger } from "../utils/logger.util";
 
 export async function ingresarDatosLogin(page: any) {
   if (process.env.CEDULA_IDENTIDAD && process.env.CONTRASENA) {
-    await page.locator("#login").fill("4160481");
-    await page.locator("#password").fill("Agepic135");
+    const cedula = String(process.env.CEDULA_IDENTIDAD);
+    const contrasena = String(process.env.CONTRASENA);
+    await page.locator("#login").fill(cedula);
+    await page.locator("#password").fill(contrasena);
     await page.locator("#continuar").click();
     await page.getByRole("button", { name: /otro medio/i }).click();
     await page

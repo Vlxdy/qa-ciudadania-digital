@@ -110,8 +110,8 @@ export class BodyBuilderService {
       notificador: notificadorEncrypted,
       autoridad: autoridadEncrypted,
       notificados: notificadosEncrypted,
-      enlaces: enlacesEncrypted,
-      formularioNotificacion: formularioEncrypted,
+      enlaces: enlacesEncrypted as any,
+      formularioNotificacion: formularioEncrypted as any,
       ...(notificacion.entidadNotificadora
         ? { entidadNotificadora: notificacion.entidadNotificadora }
         : {}),

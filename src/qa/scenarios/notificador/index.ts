@@ -22,6 +22,7 @@ import { scenario as noti20 } from './noti-20-notificados-cie';
 import { juridicosScenarios } from './juridico';
 import { estadoScenarios } from './estado';
 import { reenvioScenarios } from './reenvio';
+import { delegadoScenarios } from './delegado';
 
 export const notificadorScenarios: Scenario[] = [
   noti01, noti02, noti03, noti04, noti05,
@@ -31,4 +32,5 @@ export const notificadorScenarios: Scenario[] = [
   ...juridicosScenarios,
   ...estadoScenarios,
   ...reenvioScenarios,
+  ...delegadoScenarios,
 ];

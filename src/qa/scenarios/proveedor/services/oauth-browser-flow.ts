@@ -39,15 +39,47 @@ async function waitForRedirectInBrowser(
   return Object.fromEntries(current.searchParams.entries());
 }
 
-async function maybeAutoLogin(page: any): Promise<void> {
+export async function maybeAutoLogin(page: any): Promise<void> {
+  logger.info("Intentando auto-login si se configuran credenciales...", 0);
   if (process.env.CEDULA_IDENTIDAD && process.env.CONTRASENA) {
-    await page.locator("#login").fill("4160481");
-    await page.locator("#password").fill("Agepic135");
+    const cedula = String(process.env.CEDULA_IDENTIDAD);
+    const contrasena = String(process.env.CONTRASENA);
+    await page.locator("#login").fill(cedula);
+    await page.locator("#password").fill(contrasena);
     await page.locator("#continuar").click();
     await page.getByRole("button", { name: /otro medio/i }).click();
-    await page
-      .locator('input[type="radio"][name="method"][value="TOTP"]')
-      .check();
+    // await page
+    // .locator('input[type="radio"][name="method"][value="TOTP"]')
+    // .check();
+
+    const methodOptions = [
+      'input[type="radio"][name="method"][value="TOTP"]',
+      'input[type="radio"][name="method"][value="SMS"]',
+      'input[type="radio"][name="method"][value="EMAIL"]',
+    ];
+
+    let selectedMethod: string | null = null;
+
+    for (const selector of methodOptions) {
+      const option = page.locator(selector);
+
+      if (
+        (await option.count()) > 0 &&
+        (await option.isVisible()) &&
+        (await option.isEnabled())
+      ) {
+        await option.check();
+        selectedMethod = selector;
+        break;
+      }
+    }
+
+    if (!selectedMethod) {
+      throw new Error(
+        "No se encontró ningún método de autenticación disponible",
+      );
+    }
+
     await page.locator("#continuar-2fa").click();
     await page.locator('input[data-index="0"]').fill("1");
     await page.locator('input[data-index="1"]').fill("2");

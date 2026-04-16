@@ -3,8 +3,8 @@
  * Copia independiente de src/aprobador/services/playwright-approval.service.ts
  * para poder modificarlo sin afectar el flujo principal del aprobador.
  */
-import { ingresarDatosLogin } from "../../proveedor/datos";
 import { logger } from "../../utils/logger.util";
+import { maybeAutoLogin } from "../scenarios/proveedor/services/oauth-browser-flow";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -110,16 +110,14 @@ export class QaPlaywrightApprovalService {
       });
 
       // LOGIN
-      await ingresarDatosLogin(page);
+      await maybeAutoLogin(page);
 
       // APROBACIÓN
       await page.getByRole("button", { name: /aprobar/i }).click();
       await page
         .getByRole("button", { name: /otro medio de verificación/i })
         .click();
-      await page
-        .locator('input[name="tipoVerificacion"][value="SMS"]')
-        .check();
+      await page.locator('input[name="tipoVerificacion"][value="SMS"]').check();
       await page.getByRole("button", { name: /aceptar/i }).click();
 
       // OTP 2
