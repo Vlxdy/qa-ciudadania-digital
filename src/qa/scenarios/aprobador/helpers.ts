@@ -102,6 +102,7 @@ export function fileToBase64(filePath: string): string {
 
 export const fixtures = {
   validPdf: fixturesPaths.validPdf,
+  signedPdf: fixturesPaths.signedPdf,
   validPdf1mb: fixturesPaths.validPdf1mb,
   validPdf20mb: fixturesPaths.validPdf20mb,
   emptyPdf: fixturesPaths.emptyPdf,

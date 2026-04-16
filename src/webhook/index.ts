@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { JwtService } from "./jwt.service";
 import { logger } from "../utils/logger.util";
 import dayjs from "dayjs";
+import { fixturesPaths } from "../qa/fixtures/paths";
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ function setCors(res: http.ServerResponse) {
 
 const PORT = Number(process.env.WEBHOOK_PORT ?? 4000);
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? "./output";
-const FILE_DIR = "./casos";
+const FILE_DIR = fixturesPaths.dir;
 
 const PATH_PREFIX = (process.env.WEBHOOK_PATH_PREFIX ?? "").replace(/\/+$/, "");
 const JWT_ENABLED = process.env.WEBHOOK_JWT_ENABLED !== "false";
@@ -30,7 +31,7 @@ const MECANISMO_PATTERN = new RegExp(
 );
 
 const FILE_ROUTE_PATTERN = new RegExp(
-  `^${PATH_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/file/([^/]+)$`,
+  `^${PATH_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/file(?:/([^/]+))?$`,
 );
 
 const WRITE_METHODS = ["POST", "PUT", "PATCH"];
@@ -106,6 +107,23 @@ function sendFile(res: http.ServerResponse, filePath: string): boolean {
   return true;
 }
 
+function listFixtureFiles(baseUrl: string) {
+  if (!fs.existsSync(FILE_DIR)) return [];
+
+  return fs
+    .readdirSync(FILE_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const fullPath = path.join(FILE_DIR, entry.name);
+      return {
+        name: entry.name,
+        size: fs.statSync(fullPath).size,
+        url: `${baseUrl}/${encodeURIComponent(entry.name)}`,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function htmlVisitado(mecanismo: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -154,6 +172,26 @@ const server = http.createServer(async (req, res) => {
 
     if (fileMatch && method === "GET") {
       const fileName = fileMatch[1];
+      const fileBase = `http://localhost:${PORT}${PATH_PREFIX}/file`;
+
+      if (!fileName) {
+        logger.info("Listado de archivos fixture");
+        const files = listFixtureFiles(fileBase);
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify(
+            {
+              dir: FILE_DIR,
+              total: files.length,
+              files,
+            },
+            null,
+            2,
+          ),
+        );
+        return;
+      }
 
       logger.info("Descarga de archivo");
 
@@ -165,9 +203,17 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const filePath = path.join(FILE_DIR, fileName);
+      const decodedName = decodeURIComponent(fileName);
+      if (decodedName.includes("..") || decodedName.includes("/")) {
+        logger.warn("Nombre de archivo inválido");
 
-      logger.info(`Archivo: ${fileName}`);
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Nombre de archivo inválido" }));
+        return;
+      }
+      const filePath = path.join(FILE_DIR, decodedName);
+
+      logger.info(`Archivo: ${decodedName}`);
       logger.debug("Ruta completa", filePath);
 
       const ok = sendFile(res, filePath);
