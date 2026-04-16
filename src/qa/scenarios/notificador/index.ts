@@ -21,6 +21,7 @@ import { scenario as noti19 } from './noti-19-multiples-enlaces';
 import { scenario as noti20 } from './noti-20-notificados-cie';
 import { juridicosScenarios } from './juridico';
 import { estadoScenarios } from './estado';
+import { reenvioScenarios } from './reenvio';
 
 export const notificadorScenarios: Scenario[] = [
   noti01, noti02, noti03, noti04, noti05,
@@ -29,4 +30,5 @@ export const notificadorScenarios: Scenario[] = [
   noti16, noti17, noti18, noti19, noti20,
   ...juridicosScenarios,
   ...estadoScenarios,
+  ...reenvioScenarios,
 ];
