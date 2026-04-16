@@ -6,6 +6,9 @@ import { qaEnv } from '../../../config/qa-env';
 export const estadoUrl = (codigoSeguimiento: string) =>
   `${qaEnv.ISSUER_NOTIFICADOR}/api/notificacion/estado/${codigoSeguimiento}`;
 
+export const comprobanteUrl = (codigoSeguimiento: string) =>
+  `${qaEnv.ISSUER_NOTIFICADOR}/api/notificacion/estado/comprobante/${codigoSeguimiento}`;
+
 export const defaultToken = () => qaEnv.TOKEN_CONFIGURACION;
 
 /** UUID inexistente pero con formato válido — para escenario de 404. */
