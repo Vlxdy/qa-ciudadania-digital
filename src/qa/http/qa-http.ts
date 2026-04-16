@@ -52,6 +52,46 @@ export async function qaPost(
 }
 
 /**
+ * GET genérico. validateStatus: () => true para capturar cualquier código HTTP.
+ */
+export async function qaGet(
+  url: string,
+  headers: Record<string, string>,
+  timeoutMs = 30_000,
+): Promise<QaResponse> {
+  const start = Date.now();
+  try {
+    const response = await axios.get(url, {
+      headers,
+      validateStatus: () => true,
+      timeout: timeoutMs,
+    });
+    return {
+      httpStatus: response.status,
+      body: response.data,
+      request: {
+        method: 'GET',
+        url,
+        headers,
+        encoding: 'json',
+      },
+      durationMs: Date.now() - start,
+    };
+  } catch (err) {
+    return {
+      request: {
+        method: 'GET',
+        url,
+        headers,
+        encoding: 'json',
+      },
+      localError: err instanceof Error ? err.message : String(err),
+      durationMs: Date.now() - start,
+    };
+  }
+}
+
+/**
  * POST con body application/x-www-form-urlencoded (token endpoint OAuth).
  */
 export async function qaPostForm(

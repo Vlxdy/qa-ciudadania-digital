@@ -5,6 +5,7 @@ import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
 import { buildValidBodyAsync, notificadorUrl, defaultToken } from './helpers';
+import { codigosStore } from './codigos-store';
 
 const META = {
   id: 'noti-01',
@@ -33,6 +34,8 @@ export const scenario: Scenario = {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
       });
+      const codigo = (response.body as any)?.datos?.codigoSeguimiento;
+      if (codigo) codigosStore.codigoSeguimientoNatural = codigo;
       return makeResult(META, response, EXPECTED);
     } catch (err) {
       return makeResult(META, {

@@ -71,6 +71,7 @@ export const qaEnv = {
   // Código gob.bo de una segunda entidad (para escenarios de múltiples notificados)
   NOTI_JURIDICO_CODIGO_ENTIDAD_2: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD_2 ?? '341',
 
+
   // ─── Proveedor ────────────────────────────────────────────────────────────
   OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',
   OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID ?? '',

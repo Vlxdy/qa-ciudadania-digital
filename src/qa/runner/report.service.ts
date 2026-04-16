@@ -182,14 +182,18 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
   let curlScript: string;
 
   if (request.method === 'GET') {
-    // Authorization endpoint: petición GET con todos los parámetros ya en la URL
+    const headers = Object.entries(request.headers)
+      .map(([k, v]) => `  -H ${shellEscapeSingle(`${k}: ${v}`)} \\`)
+      .join('\n');
+
     curlScript = [
       '#!/usr/bin/env bash',
       `# ${result.scenarioId} — ${result.scenarioName}`,
-      `curl \\`,
-      `  ${shellEscapeSingle(request.url)}`,
+      `curl -X GET \\`,
+      `  ${shellEscapeSingle(request.url)} \\`,
+      headers,
       '',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
   } else {
     const headers = Object.entries(request.headers)
       .map(([k, v]) => `  -H ${shellEscapeSingle(`${k}: ${v}`)} \\`)
