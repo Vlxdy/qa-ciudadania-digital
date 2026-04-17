@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'Array metadatos con 21 ítems debe fallar validación Zod: máximo 20 ítems.',
   run: async (): Promise<ScenarioResult> => {
-    const base = buildQrSeguroBody();
+    const base = await buildQrSeguroBody();
     const metadatosExcesivos = Array.from({ length: 21 }, (_, i) => ({
       clave: `clave${i + 1}`,
       valor: `valor${i + 1}`,

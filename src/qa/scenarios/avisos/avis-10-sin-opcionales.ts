@@ -25,7 +25,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const base = buildAvisosBody();
+      const base = await buildAvisosBody();
       const body = {
         codigoPlantilla: base.codigoPlantilla,
         accessToken: base.accessToken,

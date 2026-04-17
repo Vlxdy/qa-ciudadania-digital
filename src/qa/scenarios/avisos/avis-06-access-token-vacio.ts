@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'accessToken vacío (no pasa validación Zod min:1) en el envío de avisos.',
   run: async (): Promise<ScenarioResult> => {
-    const input = { ...buildAvisosBody(), accessToken: '' };
+    const input = { ...(await buildAvisosBody()), accessToken: '' };
     const validation = validateInputAvisos(input);
     const localError = validation.valid ? undefined : validation.error;
     const httpResult = await tryBuildAndSendAvisos(input);

@@ -6,22 +6,17 @@ import type { QrSeguroInput } from '../../../schemas/qr-seguro.schema';
 import { QrSeguroInputSchema } from '../../../schemas/qr-seguro.schema';
 import { qaEnv } from '../../config/qa-env';
 import { qaPost } from '../../http/qa-http';
-import { getProveedorSessionStore } from '../proveedor/services/session.store';
-
-// ─── Token de acceso (flujo proveedor prov-00 + prov-01) ─────────────────────
-
-export function getAccessToken(): string {
-  return getProveedorSessionStore().runtime.accessToken ?? '';
-}
+import { ensureAccessToken } from '../proveedor/services/token-provider';
 
 // ─── Builder dinámico ────────────────────────────────────────────────────────
 
 /** Construye el body completo para la generación de QR.
  *  Genera un codigoTransaccion UUID v4 fresco en cada llamada.
- *  Debe llamarse dentro del run() del escenario para capturar el accessToken actual. */
-export function buildQrSeguroBody(): QrSeguroInput {
+ *  Si el store no tiene token ejecuta el flujo OAuth automáticamente. */
+export async function buildQrSeguroBody(): Promise<QrSeguroInput> {
+  const accessToken = await ensureAccessToken();
   return {
-    accessToken: getAccessToken(),
+    accessToken,
     mostrarEnlace: false,
     codigoTransaccion: randomUUID(),
     documentoDigital: {

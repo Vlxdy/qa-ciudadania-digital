@@ -25,7 +25,7 @@ export const scenario: Scenario = {
     const start = Date.now();
     try {
       const body = {
-        ...buildAvisosBody(),
+        ...(await buildAvisosBody()),
         codigoPlantilla: '00000000-0000-0000-0000-000000000000',
       };
       const response = await qaPost(avisosUrl(), body, {

@@ -35,7 +35,7 @@ export const scenario: Scenario = {
       };
 
       // Fase 1: generar QR
-      const generacionBody = buildQrSeguroBody();
+      const generacionBody = await buildQrSeguroBody();
       const generacionResponse = await qaPost(qrSeguroUrl(), generacionBody, {
         Authorization: `Bearer ${generacionToken()}`,
         'Content-Type': 'application/json',

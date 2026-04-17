@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'codigoPlantilla vacío debe fallar validación Zod en el envío de avisos.',
   run: async (): Promise<ScenarioResult> => {
-    const input = { ...buildAvisosBody(), codigoPlantilla: '' };
+    const input = { ...(await buildAvisosBody()), codigoPlantilla: '' };
     const validation = validateInputAvisos(input);
     const localError = validation.valid ? undefined : validation.error;
     const httpResult = await tryBuildAndSendAvisos(input);

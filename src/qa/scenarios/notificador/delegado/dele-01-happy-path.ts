@@ -11,8 +11,7 @@ import { makeResult } from '../../../types/scenario.types';
 import { qaPost } from '../../../http/qa-http';
 import { buildValidBodyDelegado, delegadoUrl, defaultToken } from './helpers';
 import { QaPlaywrightDelegadoApprovalService } from '../../../services/qa-playwright-delegado-approval.service';
-import { getProveedorSessionStore } from '../../proveedor/services/session.store';
-import { qaEnv } from '../../../config/qa-env';
+import { ensureAccessToken } from '../../proveedor/services/token-provider';
 
 const META = {
   id: 'dele-01',
@@ -46,8 +45,7 @@ export const scenario: Scenario = {
       }
 
       // ── Fase 2: aprobación vía Playwright ──────────────────────────────────
-      const accessToken =
-        getProveedorSessionStore().runtime.accessToken ?? qaEnv.ACCESS_TOKEN_CIUDADANIA;
+      const accessToken = await ensureAccessToken();
 
       const approvalResult = await QaPlaywrightDelegadoApprovalService.process(
         response.body,

@@ -34,11 +34,11 @@ export const scenario: Scenario = {
       };
 
       // Primera solicitud — debe ser 201
-      const bodyFirst = { ...buildQrSeguroBody(), codigoTransaccion };
+      const bodyFirst = { ...(await buildQrSeguroBody()), codigoTransaccion };
       await qaPost(qrSeguroUrl(), bodyFirst, headers);
 
       // Segunda solicitud con el mismo UUID — debe ser 409
-      const bodySecond = { ...buildQrSeguroBody(), codigoTransaccion };
+      const bodySecond = { ...(await buildQrSeguroBody()), codigoTransaccion };
       const response = await qaPost(qrSeguroUrl(), bodySecond, headers);
 
       return makeResult(META, response, EXPECTED);

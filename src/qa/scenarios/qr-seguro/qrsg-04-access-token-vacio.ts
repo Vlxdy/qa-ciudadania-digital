@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'accessToken vacío en el body debe fallar validación Zod en la generación de QR.',
   run: async (): Promise<ScenarioResult> => {
-    const input = { ...buildQrSeguroBody(), accessToken: '' };
+    const input = { ...(await buildQrSeguroBody()), accessToken: '' };
     const validation = validateInputQrSeguro(input);
     const localError = validation.valid ? undefined : validation.error;
     const httpResult = await tryBuildAndSendQrSeguro(input);

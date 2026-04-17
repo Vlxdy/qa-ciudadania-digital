@@ -28,6 +28,7 @@ export interface ProveedorSessionStore {
     lastCallbackParams?: Record<string, string>;
     startedAt?: string;
     accessToken?: string;
+    lastTokenResponse?: Record<string, unknown>;
   };
 }
 

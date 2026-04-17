@@ -6,8 +6,7 @@ import { makeResult } from "../../types/scenario.types";
 import { qaPost } from "../../http/qa-http";
 import { v4 as uuidv4 } from "uuid";
 import { multipleUrl, defaultToken } from "./helpers";
-import { qaEnv } from "../../config/qa-env";
-import { getProveedorSessionStore } from "../proveedor/services/session.store";
+import { ensureAccessToken } from "../proveedor/services/token-provider";
 
 const META = {
   id: "apro-21",
@@ -27,7 +26,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const accessToken = getProveedorSessionStore().runtime.accessToken;
+      const accessToken = await ensureAccessToken();
       const body = {
         idTramite: uuidv4(),
         accessToken,

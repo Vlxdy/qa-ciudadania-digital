@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'uuidCiudadano vacío o inválido en el primer elemento de envios debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const base = buildAvisosBody();
+    const base = await buildAvisosBody();
     const input = {
       ...base,
       envios: [{ ...base.envios[0], uuidCiudadano: '' }],

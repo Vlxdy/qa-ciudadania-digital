@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'codigoDocumento vacío en documentoDigital debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const base = buildQrSeguroBody();
+    const base = await buildQrSeguroBody();
     const input = {
       ...base,
       documentoDigital: { ...base.documentoDigital, codigoDocumento: '' },

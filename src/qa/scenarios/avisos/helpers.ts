@@ -5,36 +5,17 @@ import type { AvisosInput } from '../../../schemas/avisos.schema';
 import { AvisosInputSchema } from '../../../schemas/avisos.schema';
 import { qaEnv } from '../../config/qa-env';
 import { qaPost } from '../../http/qa-http';
-import { getProveedorSessionStore } from '../proveedor/services/session.store';
+import { ensureAccessToken } from '../proveedor/services/token-provider';
 
-// ─── Token de acceso (obtenido del flujo proveedor prov-00 + prov-01) ─────────
+// ─── Builder dinámico (obtiene el accessToken via OAuth si no está en el store) ─
 
-export function getAccessToken(): string {
-  return getProveedorSessionStore().runtime.accessToken ?? '';
-}
-
-// ─── Input base estructural (sin accessToken — se lee en tiempo de ejecución) ─
-
-/** Referencia estructural estática: útil para spread en escenarios de validación.
- *  NO usar directamente en llamadas HTTP — usar buildAvisosBody() en su lugar. */
-export const BASE_AVISOS_STRUCT = {
-  codigoPlantilla: qaEnv.AVISOS_CODIGO_PLANTILLA,
-  envios: [
-    {
-      uuidCiudadano: qaEnv.AVISOS_UUID_CIUDADANO,
-      parametros: [qaEnv.AVISOS_PARAMETRO_1],
-    },
-  ],
-};
-
-// ─── Builder dinámico (lee el accessToken del store en cada llamada) ──────────
-
-/** Construye el body completo incluyendo el accessToken desde el session store.
- *  Debe llamarse dentro del run() del escenario para capturar el token actual. */
-export function buildAvisosBody(): AvisosInput {
+/** Construye el body completo incluyendo el accessToken del ciudadano.
+ *  Si el store no tiene token ejecuta el flujo OAuth automáticamente. */
+export async function buildAvisosBody(): Promise<AvisosInput> {
+  const accessToken = await ensureAccessToken();
   return {
     codigoPlantilla: qaEnv.AVISOS_CODIGO_PLANTILLA,
-    accessToken: getAccessToken(),
+    accessToken,
     envios: [
       {
         uuidCiudadano: qaEnv.AVISOS_UUID_CIUDADANO,

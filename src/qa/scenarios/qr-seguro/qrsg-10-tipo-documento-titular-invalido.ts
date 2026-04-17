@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'tipoDocumento con valor no permitido (ej: PASAPORTE) en el primer titular debe fallar Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const base = buildQrSeguroBody();
+    const base = await buildQrSeguroBody();
     const input = {
       ...base,
       documentoDigital: {

@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'codigoTransaccion con valor no UUID (ej: "TRANSACCION-001") debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const input = { ...buildQrSeguroBody(), codigoTransaccion: 'TRANSACCION-001-NO-UUID' };
+    const input = { ...(await buildQrSeguroBody()), codigoTransaccion: 'TRANSACCION-001-NO-UUID' };
     const validation = validateInputQrSeguro(input);
     const localError = validation.valid ? undefined : validation.error;
     const httpResult = await tryBuildAndSendQrSeguro(input);

@@ -7,8 +7,7 @@ import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
 import { buildMultipleBody, multipleUrl, defaultToken, fixtures } from './helpers';
 import { QaPlaywrightApprovalService } from '../../services/qa-playwright-approval.service';
-import { qaEnv } from '../../config/qa-env';
-import { getProveedorSessionStore } from '../proveedor/services/session.store';
+import { ensureAccessToken } from '../proveedor/services/token-provider';
 
 const META = {
   id: 'apro-24',
@@ -30,8 +29,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const accessToken =
-        getProveedorSessionStore().runtime.accessToken ?? qaEnv.ACCESS_TOKEN_CIUDADANIA;
+      const accessToken = await ensureAccessToken();
 
       const body = buildMultipleBody([fixtures.validJson, fixtures.validJson], { accessToken });
       const response = await qaPost(multipleUrl(), body, {

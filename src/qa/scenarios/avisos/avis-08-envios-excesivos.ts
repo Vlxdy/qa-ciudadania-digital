@@ -26,7 +26,7 @@ export const scenario: Scenario = {
       uuidCiudadano: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`,
       parametros: [qaEnv.AVISOS_PARAMETRO_1],
     }));
-    const input = { ...buildAvisosBody(), envios: enviosExcesivos };
+    const input = { ...(await buildAvisosBody()), envios: enviosExcesivos };
     const validation = validateInputAvisos(input);
     const localError = validation.valid ? undefined : validation.error;
     const httpResult = await tryBuildAndSendAvisos(input);

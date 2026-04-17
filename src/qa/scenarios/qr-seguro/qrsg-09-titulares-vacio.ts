@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'Array titulares vacío debe fallar validación Zod: se requiere al menos 1 titular.',
   run: async (): Promise<ScenarioResult> => {
-    const base = buildQrSeguroBody();
+    const base = await buildQrSeguroBody();
     const input = {
       ...base,
       documentoDigital: { ...base.documentoDigital, titulares: [] },

@@ -12,8 +12,7 @@ import {
   fixtures,
 } from "./helpers";
 import { QaPlaywrightApprovalService } from "../../services/qa-playwright-approval.service";
-import { qaEnv } from "../../config/qa-env";
-import { getProveedorSessionStore } from "../proveedor/services/session.store";
+import { ensureAccessToken } from "../proveedor/services/token-provider";
 
 const META = {
   id: "apro-02",
@@ -35,10 +34,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      // Preferir el access_token obtenido del flujo proveedor (prov-01); si no, usar env
-      const accessToken =
-        getProveedorSessionStore().runtime.accessToken ??
-        qaEnv.ACCESS_TOKEN_CIUDADANIA;
+      const accessToken = await ensureAccessToken();
 
       const body = buildMultipleBody([fixtures.validPdf, fixtures.validPdf], {
         accessToken,

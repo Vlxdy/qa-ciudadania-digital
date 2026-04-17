@@ -10,7 +10,7 @@ import {
   defaultToken,
   fixtures,
 } from "./helpers";
-import { getProveedorSessionStore } from "../proveedor/services/session.store";
+import { ensureAccessToken } from "../proveedor/services/token-provider";
 
 const META = {
   id: "apro-22",
@@ -30,7 +30,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const accessToken = getProveedorSessionStore().runtime.accessToken;
+      const accessToken = await ensureAccessToken();
       const body = buildMultipleBody([fixtures.validPdf, fixtures.validJson], {
         accessToken,
       });

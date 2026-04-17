@@ -49,7 +49,7 @@ export function buildSingleBody(
     hashDocumento: overrides.hashDocumento ?? hash,
     descripcion: overrides.descripcion ?? 'Aprobación automática QA',
     idTramite: overrides.idTramite ?? uuidv4(),
-    accessToken: overrides.accessToken ?? qaEnv.ACCESS_TOKEN_CIUDADANIA,
+    accessToken: overrides.accessToken ?? '',
     documento: overrides.documento ?? base64,
   };
 }
@@ -71,7 +71,7 @@ export function buildMultipleBody(
 
   return {
     idTramite: overrides.idTramite ?? uuidv4(),
-    accessToken: overrides.accessToken ?? qaEnv.ACCESS_TOKEN_CIUDADANIA,
+    accessToken: overrides.accessToken ?? '',
     documentos: filePaths.map((fp) => {
       const buffer = fs.readFileSync(fp);
       const ext = fp.toLowerCase().endsWith('.json') ? 'JSON' : 'PDF';

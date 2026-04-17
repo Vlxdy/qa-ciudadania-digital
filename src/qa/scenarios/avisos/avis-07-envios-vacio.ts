@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'Array envios vacío debe fallar validación Zod: se requiere al menos 1 elemento.',
   run: async (): Promise<ScenarioResult> => {
-    const input = { ...buildAvisosBody(), envios: [] };
+    const input = { ...(await buildAvisosBody()), envios: [] };
     const validation = validateInputAvisos(input);
     const localError = validation.valid ? undefined : validation.error;
     const httpResult = await tryBuildAndSendAvisos(input);

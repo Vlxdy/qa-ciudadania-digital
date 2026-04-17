@@ -10,7 +10,7 @@ export const qaEnv = {
   // ─── Aprobador ────────────────────────────────────────────────────────────
   APROBADOR_URL: process.env.APROBADOR_URL ?? '',
   TOKEN_CLIENTE: process.env.TOKEN_CLIENTE ?? '',
-  ACCESS_TOKEN_CIUDADANIA: process.env.ACCESS_TOKEN_CIUDADANIA ?? '',
+
   HASH_MODE: (process.env.HASH_MODE ?? 'BUFFER') as 'BUFFER' | 'BASE64',
 
   // ─── Notificador — conexión ───────────────────────────────────────────────
@@ -136,6 +136,9 @@ export const qaEnv = {
   // Nonce válido y no utilizado para el escenario happy path (uso único — regenerar antes de cada run)
   DOC_DIGITAL_NONCE: process.env.DOC_DIGITAL_NONCE ?? '',
 
+  // Código UUID del documento digital creado en Developer (para generación de nonce)
+  DOC_DIGITAL_CODIGO_DOCUMENTO: process.env.DOC_DIGITAL_CODIGO_DOCUMENTO ?? '',
+
   // ─── Proveedor ────────────────────────────────────────────────────────────
   OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',
   OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID ?? '',
@@ -178,6 +181,7 @@ export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 
     'documentos-digitales': {
       DOC_DIGITAL_URL_BASE: qaEnv.DOC_DIGITAL_URL_BASE,
       DOC_DIGITAL_TOKEN: qaEnv.DOC_DIGITAL_TOKEN,
+      DOC_DIGITAL_CODIGO_DOCUMENTO: qaEnv.DOC_DIGITAL_CODIGO_DOCUMENTO,
     },
   };
   return Object.entries(checks[module])

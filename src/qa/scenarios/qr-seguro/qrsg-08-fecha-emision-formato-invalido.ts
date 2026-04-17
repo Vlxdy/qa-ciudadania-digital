@@ -21,7 +21,7 @@ export const scenario: Scenario = {
   ...META,
   description: 'fechaEmision con formato YYYY-MM-DD (en lugar de DD/MM/YYYY) debe fallar validación Zod.',
   run: async (): Promise<ScenarioResult> => {
-    const base = buildQrSeguroBody();
+    const base = await buildQrSeguroBody();
     const input = {
       ...base,
       documentoDigital: {

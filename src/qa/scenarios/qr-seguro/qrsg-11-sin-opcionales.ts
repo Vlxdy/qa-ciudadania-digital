@@ -25,7 +25,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const base = buildQrSeguroBody();
+      const base = await buildQrSeguroBody();
       const body = {
         accessToken: base.accessToken,
         mostrarEnlace: base.mostrarEnlace,

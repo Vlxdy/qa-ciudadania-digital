@@ -24,7 +24,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const response = await qaPost(avisosUrl(), buildAvisosBody(), {
+      const response = await qaPost(avisosUrl(), await buildAvisosBody(), {
         Authorization: 'Bearer TOKEN_INCORRECTO_QA_XYZ',
         'Content-Type': 'application/json',
       });
