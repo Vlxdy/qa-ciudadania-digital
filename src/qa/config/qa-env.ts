@@ -76,6 +76,26 @@ export const qaEnv = {
   NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: process.env.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? 'NONE',
   NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC: process.env.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC ?? 'NONE',
 
+  // ─── QR-Seguro ───────────────────────────────────────────────────────────
+  // URL base del servicio QR-Seguro (generada en módulo Developer)
+  QR_SEGURO_URL_BASE: process.env.QR_SEGURO_URL_BASE ?? '',
+
+  // Token Bearer del proyecto en Developer (header Authorization)
+  QR_SEGURO_TOKEN: process.env.QR_SEGURO_TOKEN ?? '',
+
+  // Datos del documento digital de prueba
+  QR_SEGURO_CODIGO_DOCUMENTO: process.env.QR_SEGURO_CODIGO_DOCUMENTO ?? 'R20-2024-000124QA',
+  QR_SEGURO_NOMBRE_DOCUMENTO: process.env.QR_SEGURO_NOMBRE_DOCUMENTO ?? 'Certificado QA de Prueba',
+  QR_SEGURO_DESCRIPCION_DOCUMENTO: process.env.QR_SEGURO_DESCRIPCION_DOCUMENTO ?? 'Documento generado por el runner QA.',
+  QR_SEGURO_FECHA_EMISION: process.env.QR_SEGURO_FECHA_EMISION ?? '01/01/2025',
+  QR_SEGURO_FECHA_EXPIRACION: process.env.QR_SEGURO_FECHA_EXPIRACION ?? '01/01/2026',
+
+  // Datos del titular principal del documento
+  QR_SEGURO_TITULAR_NOMBRE: process.env.QR_SEGURO_TITULAR_NOMBRE ?? 'CIUDADANO QA',
+  QR_SEGURO_TITULAR_TIPO_DOC: (process.env.QR_SEGURO_TITULAR_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
+  QR_SEGURO_TITULAR_NUMERO_DOC: process.env.QR_SEGURO_TITULAR_NUMERO_DOC ?? '12345678',
+  QR_SEGURO_TITULAR_ROL: process.env.QR_SEGURO_TITULAR_ROL ?? 'NATURAL',
+
   // ─── Avisos ───────────────────────────────────────────────────────────────
   // URL base del servicio de avisos (generada en módulo Developer al crear plantilla)
   AVISOS_URL_BASE: process.env.AVISOS_URL_BASE ?? '',
@@ -120,7 +140,7 @@ export const qaEnv = {
 } as const;
 
 /** Retorna los nombres de las vars vacías para un módulo dado */
-export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 'avisos'): string[] {
+export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 'avisos' | 'qr-seguro'): string[] {
   const checks: Record<typeof module, Record<string, string>> = {
     aprobador: {
       APROBADOR_URL: qaEnv.APROBADOR_URL,
@@ -140,6 +160,10 @@ export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 
       AVISOS_TOKEN: qaEnv.AVISOS_TOKEN,
       AVISOS_CODIGO_PLANTILLA: qaEnv.AVISOS_CODIGO_PLANTILLA,
       AVISOS_UUID_CIUDADANO: qaEnv.AVISOS_UUID_CIUDADANO,
+    },
+    'qr-seguro': {
+      QR_SEGURO_URL_BASE: qaEnv.QR_SEGURO_URL_BASE,
+      QR_SEGURO_TOKEN: qaEnv.QR_SEGURO_TOKEN,
     },
   };
   return Object.entries(checks[module])

@@ -2,7 +2,7 @@
 // Tipos base del sistema de escenarios QA
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ModuleName = 'proveedor' | 'aprobador' | 'notificador' | 'avisos';
+export type ModuleName = 'proveedor' | 'aprobador' | 'notificador' | 'avisos' | 'qr-seguro';
 
 // ─── Resultado esperado ───────────────────────────────────────────────────────
 
