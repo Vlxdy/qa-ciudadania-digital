@@ -97,7 +97,7 @@ export class QaPlaywrightApprovalService {
     const config = readListenerConfig();
     logger.info(`Navegando al link de aprobación: ${link}`);
 
-    const { browser, context, page } = await createBrowser(false);
+    const { browser, context, page } = await createBrowser(config.headless);
 
     await context.setExtraHTTPHeaders({
       Authorization: `Bearer ${accessToken}`,
