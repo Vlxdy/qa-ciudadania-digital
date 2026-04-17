@@ -16,13 +16,26 @@ export type ApprovalListenerResult = {
   body: unknown;
 };
 
+
+function resolveHeadless(specificVarName: string, defaultValue: boolean): boolean {
+  const globalHeadless = process.env.BROWSER_HEADLESS;
+  if (globalHeadless === "true") return true;
+  if (globalHeadless === "false") return false;
+
+  const specific = process.env[specificVarName];
+  if (specific === "true") return true;
+  if (specific === "false") return false;
+
+  return defaultValue;
+}
+
 function readListenerConfig(): ApprovalListenerConfig {
   return {
     endpointPattern:
       process.env.APROBACION_RESULT_ENDPOINT ?? "/api/solicitudes",
     successPattern: process.env.APROBACION_SUCCESS_PATTERN ?? '"aprobado":true',
     timeoutMs: Number(process.env.APROBACION_WAIT_TIMEOUT_MS ?? 120000),
-    headless: process.env.APROBACION_HEADLESS !== "false",
+    headless: resolveHeadless("APROBACION_HEADLESS", true),
   };
 }
 
@@ -120,7 +133,7 @@ export class PlaywrightApprovalService {
     const config = readListenerConfig();
     logger.info(`Navegando al link de aprobación: ${link}`);
 
-    const { browser, context, page } = await createBrowser(false);
+    const { browser, context, page } = await createBrowser(config.headless);
 
     await context.setExtraHTTPHeaders({
       Authorization: `Bearer ${accessToken}`,

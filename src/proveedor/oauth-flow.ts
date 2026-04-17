@@ -48,6 +48,19 @@ function buildPkce() {
   return { codeVerifier, codeChallenge };
 }
 
+
+function resolveHeadless(specificVarName: string, defaultValue: boolean): boolean {
+  const globalHeadless = process.env.BROWSER_HEADLESS;
+  if (globalHeadless === "true") return true;
+  if (globalHeadless === "false") return false;
+
+  const specific = process.env[specificVarName];
+  if (specific === "true") return true;
+  if (specific === "false") return false;
+
+  return defaultValue;
+}
+
 export function getOidcConfig(): OidcConfig {
   const issuer = process.env.OIDC_ISSUER ?? process.env.PROVEEDOR_BASE_URL;
   const clientId =
@@ -196,7 +209,7 @@ export async function runProveedorOAuth(
   const playwrightModule = process.env.PLAYWRIGHT_PACKAGE ?? "playwright";
   const { chromium } = await import(playwrightModule);
   const browser = await chromium.launch({
-    headless: process.env.OIDC_HEADLESS === "true",
+    headless: resolveHeadless("OIDC_HEADLESS", false),
   });
   const page = await browser.newPage();
 

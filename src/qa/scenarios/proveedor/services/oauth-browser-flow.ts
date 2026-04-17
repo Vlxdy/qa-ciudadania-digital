@@ -23,6 +23,18 @@ function isLocalRedirect(redirectUri: string): boolean {
   return host === "localhost" || host === "127.0.0.1";
 }
 
+function resolveHeadless(specificVarName: string, defaultValue: boolean): boolean {
+  const globalHeadless = process.env.BROWSER_HEADLESS;
+  if (globalHeadless === "true") return true;
+  if (globalHeadless === "false") return false;
+
+  const specific = process.env[specificVarName];
+  if (specific === "true") return true;
+  if (specific === "false") return false;
+
+  return defaultValue;
+}
+
 async function waitForRedirectInBrowser(
   page: any,
   redirectUri: string,
@@ -178,7 +190,7 @@ export async function runQaProveedorLogin(): Promise<ProveedorLoginResult> {
   const playwrightModule = process.env.PLAYWRIGHT_PACKAGE ?? "playwright";
   const { chromium } = await import(playwrightModule);
   const browser = await chromium.launch({
-    headless: process.env.OIDC_HEADLESS === "true",
+    headless: resolveHeadless("OIDC_HEADLESS", false),
   });
   const page = await browser.newPage();
 

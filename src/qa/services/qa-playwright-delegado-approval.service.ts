@@ -36,10 +36,23 @@ export type DelegadoApprovalResult = {
 
 // ─── Configuración ────────────────────────────────────────────────────────────
 
+
+function resolveHeadless(specificVarName: string, defaultValue: boolean): boolean {
+  const globalHeadless = process.env.BROWSER_HEADLESS;
+  if (globalHeadless === "true") return true;
+  if (globalHeadless === "false") return false;
+
+  const specific = process.env[specificVarName];
+  if (specific === "true") return true;
+  if (specific === "false") return false;
+
+  return defaultValue;
+}
+
 function readConfig(): DelegadoApprovalConfig {
   return {
     urlBase: process.env.DELEGADO_APPROVAL_URL_BASE ?? "",
-    headless: process.env.DELEGADO_APPROVAL_HEADLESS === "true",
+    headless: resolveHeadless("DELEGADO_APPROVAL_HEADLESS", false),
     timeoutMs: Number(process.env.DELEGADO_APPROVAL_TIMEOUT_MS ?? 120_000),
   };
 }
