@@ -9,6 +9,9 @@ import { scenario as prov06 } from './prov-06-codigo-invalido';
 import { scenario as prov07 } from './prov-07-state-mismatch';
 import { scenario as prov08 } from './prov-08-nonce-mismatch';
 import { scenario as prov09 } from './prov-09-codigo-reutilizado';
+import { scenario as prov10 } from './prov-10-mobile-happy-path';
+import { scenario as prov11 } from './prov-11-mobile-sin-code-verifier';
+import { scenario as prov12 } from './prov-12-mobile-code-verifier-invalido';
 
 export const proveedorScenarios: Scenario[] = [
   prov00,
@@ -21,4 +24,7 @@ export const proveedorScenarios: Scenario[] = [
   prov07,
   prov08,
   prov09,
+  prov10,
+  prov11,
+  prov12,
 ];

@@ -150,6 +150,11 @@ export const qaEnv = {
     | 'basic'
     | 'mobile',
   OIDC_SCOPE: process.env.OIDC_SCOPE ?? 'openid profile',
+
+  // ─── Proveedor — autenticación móvil (PKCE) ───────────────────────────────
+  OIDC_MOBILE_CLIENT_ID: process.env.OIDC_MOBILE_CLIENT_ID ?? '',
+  OIDC_MOBILE_REDIRECT_URI: process.env.OIDC_MOBILE_REDIRECT_URI ?? '',
+  OIDC_MOBILE_SCOPE: process.env.OIDC_MOBILE_SCOPE ?? process.env.OIDC_SCOPE ?? 'openid profile',
 } as const;
 
 /** Retorna los nombres de las vars vacías para un módulo dado */

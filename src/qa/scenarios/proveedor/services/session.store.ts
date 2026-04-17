@@ -71,3 +71,4 @@ export function setLastAuthorizationCode(
 export function setAccessToken(token: string): void {
   store.runtime.accessToken = token;
 }
+

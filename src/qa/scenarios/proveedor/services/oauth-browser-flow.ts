@@ -6,6 +6,9 @@ import {
   getProveedorSessionStore,
   setLastAuthorizationCode,
 } from "./session.store";
+import { getMobileSessionStore, setMobileCodeVerifier } from "./mobile-session.store";
+import { generateCodeVerifier, generateCodeChallenge } from "./pkce";
+import { qaEnv } from "../../../config/qa-env";
 import { logger } from "../../../../utils/logger.util";
 
 function randomHex(size = 24): string {
@@ -230,6 +233,88 @@ export async function runQaProveedorLogin(): Promise<ProveedorLoginResult> {
 
   setLastAuthorizationCode(callbackParams.code, callbackParams);
   debugLog("Authorization code capturado en session store.");
+
+  return { callbackParams, authorizationUrl };
+}
+
+/**
+ * Flujo OAuth PKCE para aplicaciones móviles.
+ * Usa exclusivamente la configuración de OIDC_MOBILE_* y escribe solo en
+ * getMobileSessionStore() — sin tocar el store del flujo web regular.
+ */
+export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
+  const { config } = getMobileSessionStore();
+
+  if (!config.issuer || !config.clientId || !config.redirectUri) {
+    throw new Error(
+      "Faltan vars requeridas: OIDC_ISSUER, OIDC_MOBILE_CLIENT_ID, OIDC_MOBILE_REDIRECT_URI",
+    );
+  }
+
+  const state = randomHex(24);
+  const nonce = randomHex(24);
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+  setMobileCodeVerifier(codeVerifier);
+
+  const authUrl = new URL(config.authPath, config.issuer);
+  authUrl.searchParams.set("client_id", config.clientId);
+  authUrl.searchParams.set("scope", config.scope);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("redirect_uri", config.redirectUri);
+  authUrl.searchParams.set("state", state);
+  authUrl.searchParams.set("nonce", nonce);
+  authUrl.searchParams.set("code_challenge", codeChallenge);
+  authUrl.searchParams.set("code_challenge_method", "S256");
+  authUrl.searchParams.set("session", config.session);
+  authUrl.searchParams.set("property", config.property);
+  authUrl.searchParams.set("defaultStrategy", config.defaultStrategy);
+
+  if (config.prompt) {
+    authUrl.searchParams.set("prompt", config.prompt);
+  }
+
+  const authorizationUrl = authUrl.toString();
+
+  const callbackPromise = isLocalRedirect(config.redirectUri)
+    ? waitForCallback(config.redirectUri, config.timeoutMs)
+    : null;
+
+  const playwrightModule = process.env.PLAYWRIGHT_PACKAGE ?? "playwright";
+  const { chromium } = await import(playwrightModule);
+  const browser = await chromium.launch({
+    headless: resolveHeadless("OIDC_HEADLESS", false),
+  });
+  const page = await browser.newPage();
+
+  await page.goto(authorizationUrl, { waitUntil: "domcontentloaded" });
+  await maybeAutoLogin(page);
+
+  let callbackParams: Record<string, string>;
+  try {
+    callbackParams = callbackPromise
+      ? await callbackPromise
+      : await waitForRedirectInBrowser(page, config.redirectUri, config.timeoutMs);
+  } finally {
+    await browser.close();
+  }
+
+  if (callbackParams.error) {
+    throw new Error(
+      `Error de autenticación móvil: ${JSON.stringify(callbackParams)}`,
+    );
+  }
+
+  if (callbackParams.state !== state) {
+    throw new Error("State inválido. Posible CSRF.");
+  }
+
+  if (!callbackParams.code) {
+    throw new Error("No llegó authorization code.");
+  }
+
+  getMobileSessionStore().runtime.lastCallbackParams = callbackParams;
+  debugLog("Authorization code móvil capturado en mobile session store.");
 
   return { callbackParams, authorizationUrl };
 }
