@@ -9,10 +9,22 @@ export async function safeClick(
   selector: string,
   timeout: number = 10000,
 ): Promise<void> {
-  await page.waitForSelector(selector, { state: "visible", timeout });
-  await page.click(selector);
-}
+  const locator = page.locator(selector);
 
+  await locator.waitFor({ state: "visible", timeout });
+
+  // Esperar a que sea realmente clickable
+  await page.waitForFunction(
+    (el) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    },
+    await locator.elementHandle(),
+  );
+
+  await locator.click();
+}
 // ─────────────────────────────────────────────────────────────
 // Click opcional (no rompe si no existe)
 // ─────────────────────────────────────────────────────────────

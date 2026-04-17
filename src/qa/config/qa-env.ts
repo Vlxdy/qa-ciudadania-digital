@@ -126,6 +126,16 @@ export const qaEnv = {
   NOTI_JURIDICO_CODIGO_ENTIDAD_2: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD_2 ?? '341',
 
 
+  // ─── Documentos Digitales ────────────────────────────────────────────────
+  // URL base del servicio de Documentos Digitales
+  DOC_DIGITAL_URL_BASE: process.env.DOC_DIGITAL_URL_BASE ?? '',
+
+  // Token Bearer generado en el módulo Developer al crear el documento digital
+  DOC_DIGITAL_TOKEN: process.env.DOC_DIGITAL_TOKEN ?? '',
+
+  // Nonce válido y no utilizado para el escenario happy path (uso único — regenerar antes de cada run)
+  DOC_DIGITAL_NONCE: process.env.DOC_DIGITAL_NONCE ?? '',
+
   // ─── Proveedor ────────────────────────────────────────────────────────────
   OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',
   OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID ?? '',
@@ -140,7 +150,7 @@ export const qaEnv = {
 } as const;
 
 /** Retorna los nombres de las vars vacías para un módulo dado */
-export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 'avisos' | 'qr-seguro'): string[] {
+export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 'avisos' | 'qr-seguro' | 'documentos-digitales'): string[] {
   const checks: Record<typeof module, Record<string, string>> = {
     aprobador: {
       APROBADOR_URL: qaEnv.APROBADOR_URL,
@@ -164,6 +174,10 @@ export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 
     'qr-seguro': {
       QR_SEGURO_URL_BASE: qaEnv.QR_SEGURO_URL_BASE,
       QR_SEGURO_TOKEN: qaEnv.QR_SEGURO_TOKEN,
+    },
+    'documentos-digitales': {
+      DOC_DIGITAL_URL_BASE: qaEnv.DOC_DIGITAL_URL_BASE,
+      DOC_DIGITAL_TOKEN: qaEnv.DOC_DIGITAL_TOKEN,
     },
   };
   return Object.entries(checks[module])

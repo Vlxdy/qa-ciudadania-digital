@@ -16,6 +16,7 @@ import { aprobadorScenarios } from './scenarios/aprobador';
 import { notificadorScenarios } from './scenarios/notificador';
 import { avisosScenarios } from './scenarios/avisos';
 import { qrSeguroScenarios } from './scenarios/qr-seguro';
+import { documentosDigitalesScenarios } from './scenarios/documentos-digitales';
 import { runScenarios } from './runner/scenario.runner';
 import {
   printReport,
@@ -50,7 +51,7 @@ if (showHelp) {
   npm run qa [opciones]
 
   Opciones:
-    --module=<nombre>   Filtrar por módulo: proveedor | aprobador | notificador | avisos | qr-seguro
+    --module=<nombre>   Filtrar por módulo: proveedor | aprobador | notificador | avisos | qr-seguro | documentos-digitales
     --tag=<tag>         Filtrar por tag: happy | negative | auth | file-type | hash | crypto | ...
     --id=<id>           Ejecutar un escenario específico: prov-01, apro-03, noti-07, etc.
     --save              Guardar reporte JSON en output/qa/reports/
@@ -80,12 +81,13 @@ if (onlyFixtures) {
 
 async function main() {
   // Advertencia si faltan vars por módulo
-  const modulos: Array<'proveedor' | 'aprobador' | 'notificador' | 'avisos' | 'qr-seguro'> = [
+  const modulos: Array<'proveedor' | 'aprobador' | 'notificador' | 'avisos' | 'qr-seguro' | 'documentos-digitales'> = [
     'proveedor',
     'aprobador',
     'notificador',
     'avisos',
     'qr-seguro',
+    'documentos-digitales',
   ];
 
   for (const mod of modulos) {
@@ -107,6 +109,7 @@ async function main() {
     ...notificadorScenarios,
     ...avisosScenarios,
     ...qrSeguroScenarios,
+    ...documentosDigitalesScenarios,
   ];
 
   // Banner

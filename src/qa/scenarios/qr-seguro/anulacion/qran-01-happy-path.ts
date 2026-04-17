@@ -1,13 +1,15 @@
 /**
- * qran-01 — Happy Path: generar QR y luego anularlo
+ * qran-01 — Happy Path: generar QR, confirmarlo y luego anularlo
  *
  * Fase 1: POST /api/qr/generar → debe retornar 201.
- * Fase 2: POST /api/qr/anulacion con el mismo codigoTransaccion → debe retornar 202.
+ * Fase 2: POST /api/qr/confirmacion con el mismo codigoTransaccion → debe retornar 200.
+ * Fase 3: POST /api/qr/anulacion con el mismo codigoTransaccion → debe retornar 202.
  */
 import type { Scenario, ScenarioResult } from '../../../types/scenario.types';
 import { makeResult } from '../../../types/scenario.types';
 import { qaPost } from '../../../http/qa-http';
 import { buildQrSeguroBody, qrSeguroUrl, defaultToken as generacionToken } from '../helpers';
+import { confirmacionUrl, defaultToken as confirmacionToken } from '../confirmacion/helpers';
 import { anulacionUrl, defaultToken } from './helpers';
 
 const META = {
@@ -25,12 +27,15 @@ const EXPECTED = {
 
 export const scenario: Scenario = {
   ...META,
-  description: 'Generar un QR (201) y anularlo con el mismo codigoTransaccion debe retornar 202 con finalizado:true.',
+  description: 'Generar un QR (201), confirmarlo (200) y anularlo con el mismo codigoTransaccion debe retornar 202.',
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      // Fase 1: generar QR para obtener un codigoTransaccion válido
+      const transaccionBody = { codigoTransaccion: '' };
+
+      // Fase 1: generar QR
       const generacionBody = buildQrSeguroBody();
+      transaccionBody.codigoTransaccion = generacionBody.codigoTransaccion;
       const generacionResponse = await qaPost(qrSeguroUrl(), generacionBody, {
         Authorization: `Bearer ${generacionToken()}`,
         'Content-Type': 'application/json',
@@ -43,10 +48,27 @@ export const scenario: Scenario = {
         }, EXPECTED);
       }
 
-      // Fase 2: anular con el mismo codigoTransaccion
+      // Fase 2: confirmar el QR generado
+      const confirmacionResponse = await qaPost(
+        confirmacionUrl(),
+        transaccionBody,
+        {
+          Authorization: `Bearer ${confirmacionToken()}`,
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (confirmacionResponse.localError || (confirmacionResponse.httpStatus !== undefined && confirmacionResponse.httpStatus >= 400)) {
+        return makeResult(META, {
+          ...confirmacionResponse,
+          localError: `Fase 2 (confirmación) falló con ${confirmacionResponse.httpStatus ?? 'error de red'}: ${confirmacionResponse.localError ?? ''}`.trim(),
+        }, EXPECTED);
+      }
+
+      // Fase 3: anular el QR confirmado
       const response = await qaPost(
         anulacionUrl(),
-        { codigoTransaccion: generacionBody.codigoTransaccion },
+        transaccionBody,
         {
           Authorization: `Bearer ${defaultToken()}`,
           'Content-Type': 'application/json',
@@ -58,6 +80,7 @@ export const scenario: Scenario = {
         durationMs: Date.now() - start,
         body: {
           generacion: generacionResponse.body,
+          confirmacion: confirmacionResponse.body,
           anulacion: response.body,
         },
       }, EXPECTED);

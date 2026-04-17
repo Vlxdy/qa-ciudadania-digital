@@ -126,64 +126,115 @@ export class QaPlaywrightDelegadoApprovalService {
         waitUntil: "domcontentloaded",
         timeout: config.timeoutMs,
       });
+
+      let approved = false;
       try {
         // ─── LOGIN ──────────────────────────────────────────────────────────────
         await optionalClick(page, 'button:has-text("Ingresa con Ciudadanía")');
 
         await maybeAutoLogin(page);
 
-        await safeClick(page, 'button:has-text("Solicitud de delegación del")');
-        await safeClick(page, 'button:has-text("Aprobar")');
-        await safeClick(page, 'button:has-text("APROBAR")');
+        const vigentesSelector = 'div[role="button"]:has-text("Vigentes")';
 
-        await waitForText(
-          page,
-          "#notistack-snackbar",
-          "Proceso concluido satisfactoriamente",
-          30000,
+        // Esperar a que exista el menú
+        await page.waitForSelector(vigentesSelector, { timeout: 10000 });
+
+        const vigentes = page.locator(vigentesSelector).first();
+
+        // Verificar si ya está seleccionado
+        const className = await vigentes.getAttribute("class");
+
+        if (!className?.includes("Mui-selected")) {
+          logger.info("➡️ Cambiando a bandeja Vigentes");
+          await vigentes.click();
+        } else {
+          logger.info("✅ Ya estás en Vigentes");
+        }
+
+        const items = page.locator("div.MuiListItemButton-root", {
+          hasText: "Solicitud de delegación",
+        });
+
+        await items.first().waitFor({ state: "visible", timeout: 10000 });
+
+        const count = await items.count();
+
+        if (count === 0) {
+          throw new Error("❌ No se encontraron solicitudes de delegación");
+        }
+
+        await items.first().click();
+
+        // ─── ESPERAR DETALLE ───────────────────────────────────────
+        await page.waitForSelector('button:has-text("Aprobar")', {
+          state: "visible",
+          timeout: 10000,
+        });
+
+        // ─── CLICK "Aprobar" (detalle) ─────────────────────────────
+        const aprobarBtn = page.locator('button:has-text("Aprobar")').last();
+
+        await aprobarBtn.waitFor({
+          state: "visible",
+          timeout: 10000,
+        });
+
+        await aprobarBtn.click({ force: true });
+
+        // ─── BOTÓN FINAL "APROBAR" ─────────────────────────────
+        const aprobarFinalBtn = page
+          .locator('button:has-text("APROBAR")')
+          .last();
+
+        await aprobarFinalBtn.waitFor({
+          state: "visible",
+          timeout: 10000,
+        });
+
+        // esperar que esté habilitado
+        await page.waitForFunction(
+          (el: any) => {
+            return el && !el.hasAttribute("disabled");
+          },
+          await aprobarFinalBtn.elementHandle(),
         );
+
+        // pequeño delay para evitar problemas de animación
+        await page.waitForTimeout(300);
+
+        // click real
+        await aprobarFinalBtn.click({ delay: 100 });
+
+        // ─── VALIDAR SNACKBAR ─────────────────────────────────
+        const snackbar = page.locator("#notistack-snackbar");
+
+        // esperar a que aparezca (no que ya exista)
+        await snackbar.waitFor({
+          state: "visible",
+          timeout: 60000,
+        });
+
+        const text = await snackbar.textContent();
+
+        approved = !!text?.includes("Proceso concluido");
+
+        if (!approved) {
+          throw new Error("❌ Snackbar incorrecto o no esperado");
+        }
+
+        logger.info("Snackbar detectado:", text);
+        logger.info("Proceso aprobado correctamente");
       } catch (error: unknown) {
         if (error instanceof Error) {
-          console.error("❌ Error:", error.message);
+          logger.error("❌ Error:", error.message);
         } else {
-          console.error("❌ Error desconocido:", error);
+          logger.error("❌ Error desconocido:", error);
         }
       } finally {
         await browser.close();
       }
 
-      // ─── INSTRUCCIONES DE APROBACIÓN ────────────────────────────────────────
-      // TODO: Agregar aquí los pasos Playwright para aprobar el delegado.
-      //
-      // Ejemplo de estructura:
-      //   await page.getByRole('button', { name: /aprobar/i }).click();
-      //   await page.locator('...').fill('...');
-      //   await page.getByRole('button', { name: /confirmar/i }).click();
-      //
-      // ────────────────────────────────────────────────────────────────────────
-
-      // ─── CAPTURA DEL RESULTADO ──────────────────────────────────────────────
-      // TODO: Ajustar la lógica de captura según la respuesta real del portal.
-      //
-      // Opción A — esperar cambio en la URL (redirect con ?estado=...):
-      //   await page.waitForURL((url) => url.toString().includes('estado='), { timeout: config.timeoutMs });
-      //   const finalUrl = page.url();
-      //   const params = new URL(finalUrl).searchParams;
-      //   const approved = params.get('estado') === 'aprobado';
-      //
-      // Opción B — esperar respuesta de la API interna del portal:
-      //   const res = await page.waitForResponse(
-      //     (r) => r.url().includes('/delegado/aprobar') && r.request().method() === 'POST',
-      //     { timeout: config.timeoutMs },
-      //   );
-      //   const data = await res.json();
-      //   const approved = data?.aprobado === true;
-      //
-      // ────────────────────────────────────────────────────────────────────────
-
-      // Placeholder — reemplazar cuando se implementen los pasos anteriores
       const finalUrl = page.url();
-      const approved = false; // TODO: reemplazar con la lógica real
 
       const result: DelegadoApprovalResult = {
         approved,
