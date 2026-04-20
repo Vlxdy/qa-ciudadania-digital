@@ -20,7 +20,7 @@ const META = {
 const EXPECTED = {
   success: true,
   httpStatus: 201,
-  bodyContains: ['finalizado', 'nonce', 'nonceExpiration', 'urlCliente', 'tokenCliente'],
+  bodyContains: ['finalizado', 'nonce', 'nonceExpiracion', 'urlConsumo', 'tokenConsumo'],
 };
 
 export const scenario: Scenario = {

@@ -6,7 +6,10 @@ import {
   getProveedorSessionStore,
   setLastAuthorizationCode,
 } from "./session.store";
-import { getMobileSessionStore, setMobileCodeVerifier } from "./mobile-session.store";
+import {
+  getMobileSessionStore,
+  setMobileCodeVerifier,
+} from "./mobile-session.store";
 import { generateCodeVerifier, generateCodeChallenge } from "./pkce";
 import { qaEnv } from "../../../config/qa-env";
 import { logger } from "../../../../utils/logger.util";
@@ -26,7 +29,10 @@ function isLocalRedirect(redirectUri: string): boolean {
   return host === "localhost" || host === "127.0.0.1";
 }
 
-function resolveHeadless(specificVarName: string, defaultValue: boolean): boolean {
+function resolveHeadless(
+  specificVarName: string,
+  defaultValue: boolean,
+): boolean {
   const globalHeadless = process.env.BROWSER_HEADLESS;
   if (globalHeadless === "true") return true;
   if (globalHeadless === "false") return false;
@@ -103,6 +109,20 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     await page.locator('input[data-index="4"]').fill("5");
     await page.locator('input[data-index="5"]').fill("6");
     await page.locator("#continuar-2fa-validar").click();
+
+    // --- NUEVA SECCIÓN PARA PERMISOS ---
+    const botonPermitir = page.getByRole("button", { name: /permitir/i });
+
+    try {
+      // Esperamos un máximo de 5 segundos a que aparezca (ajustable)
+      // Usamos isVisible() para no lanzar una excepción si no aparece
+      await botonPermitir.waitFor({ state: "visible", timeout: 5000 });
+      await botonPermitir.click();
+      logger.info("Botón de permisos detectado y clickeado.");
+    } catch (error) {
+      // Si el timeout expira, simplemente continuamos el flujo
+      logger.info("No apareció la pantalla de permisos, continuando...");
+    }
   } else {
     logger.warn(
       "CEDULA_IDENTIDAD / CONTRASENA no configuradas — saltando autofill de login",
@@ -277,10 +297,6 @@ export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
 
   const authorizationUrl = authUrl.toString();
 
-  const callbackPromise = isLocalRedirect(config.redirectUri)
-    ? waitForCallback(config.redirectUri, config.timeoutMs)
-    : null;
-
   const playwrightModule = process.env.PLAYWRIGHT_PACKAGE ?? "playwright";
   const { chromium } = await import(playwrightModule);
   const browser = await chromium.launch({
@@ -288,18 +304,60 @@ export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
   });
   const page = await browser.newPage();
 
+  // --- LÓGICA DE CAPTURA DE PROTOCOLO MÓVIL ---
+  // Creamos una promesa que se resolverá en cuanto detectemos el intento de navegación al esquema móvil
+  const mobileRedirectPromise = new Promise<Record<string, string>>(
+    (resolve, reject) => {
+      const timeout = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Timeout de ${config.timeoutMs}ms esperando la redirección del protocolo móvil`,
+            ),
+          ),
+        config.timeoutMs,
+      );
+
+      // Escuchamos todas las peticiones salientes
+      page.on("request", (request: any) => {
+        const url = request.url();
+        // Si la URL empieza con tu redirectUri (ej. bo.gob.nombre-sistema.rpa:/)
+        if (url.startsWith(config.redirectUri)) {
+          clearTimeout(timeout);
+          debugLog(`¡Redirección capturada internamente!: ${url}`);
+
+          // Parseamos los parámetros. Como URL() puede fallar con protocolos raros,
+          // convertimos temporalmente a una URL válida de http para extraer params.
+          const normalizedUrl = new URL(
+            url.replace(config.redirectUri, "http://localhost/"),
+          );
+          const params = Object.fromEntries(
+            normalizedUrl.searchParams.entries(),
+          );
+          resolve(params);
+        }
+      });
+    },
+  );
+
   await page.goto(authorizationUrl, { waitUntil: "domcontentloaded" });
-  await maybeAutoLogin(page);
 
   let callbackParams: Record<string, string>;
   try {
-    callbackParams = callbackPromise
-      ? await callbackPromise
-      : await waitForRedirectInBrowser(page, config.redirectUri, config.timeoutMs);
+    // 1. Ejecutamos el flujo de login (cedula, pass, 2FA, y el nuevo botón de Permitir)
+    await maybeAutoLogin(page);
+
+    // 2. Esperamos a que el interceptor capture la URL de éxito
+    // Esto captura la URL antes de que el navegador muestre el popup de xdg-open
+    callbackParams = await mobileRedirectPromise;
+  } catch (error: any) {
+    throw new Error(`Error durante el flujo mobile: ${error.message}`);
   } finally {
+    // Cerramos el browser. Esto también mata cualquier diálogo de xdg-open que haya quedado colgado
     await browser.close();
   }
 
+  // --- VALIDACIONES POST-CAPTURA ---
   if (callbackParams.error) {
     throw new Error(
       `Error de autenticación móvil: ${JSON.stringify(callbackParams)}`,
@@ -317,7 +375,7 @@ export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
   const mobileRuntime = getMobileSessionStore().runtime;
   mobileRuntime.lastCallbackParams = callbackParams;
   mobileRuntime.authorizationUrl = authorizationUrl;
-  debugLog("Authorization code móvil capturado en mobile session store.");
+  debugLog("Authorization code móvil capturado y guardado exitosamente.");
 
   return { callbackParams, authorizationUrl };
 }
