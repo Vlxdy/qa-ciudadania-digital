@@ -118,6 +118,16 @@ export const qaEnv = {
   // Fragmento adicional para URL de redirección (parametroRedireccion)
   AVISOS_PARAMETRO_REDIRECCION: process.env.AVISOS_PARAMETRO_REDIRECCION ?? 'tramite/qa-test',
 
+  // ─── Notificador — Obligatorio Legal ─────────────────────────────────────
+  // Configuración separada para notificaciones de carácter obligatorio legal
+  ISSUER_NOTIFICADOR_OBL_LEGAL: process.env.ISSUER_NOTIFICADOR_OBL_LEGAL ?? '',
+  TOKEN_CONFIGURACION_OBL_LEGAL: process.env.TOKEN_CONFIGURACION_OBL_LEGAL ?? '',
+
+  // ─── Notificador — Obligatorio Requerimiento ──────────────────────────────
+  // Configuración separada para notificaciones de carácter obligatorio requerimiento
+  ISSUER_NOTIFICADOR_OBL_REQ: process.env.ISSUER_NOTIFICADOR_OBL_REQ ?? '',
+  TOKEN_CONFIGURACION_OBL_REQ: process.env.TOKEN_CONFIGURACION_OBL_REQ ?? '',
+
   // ─── Notificador Jurídico (entidad pública) ───────────────────────────────
   // Código gob.bo de la entidad principal que recibirá la notificación jurídica
   NOTI_JURIDICO_CODIGO_ENTIDAD: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD ?? '340',

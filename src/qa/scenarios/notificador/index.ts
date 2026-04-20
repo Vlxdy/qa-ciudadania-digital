@@ -24,6 +24,8 @@ import { estadoScenarios } from './estado';
 import { reenvioScenarios } from './reenvio';
 import { delegadoScenarios } from './delegado';
 import { inactivarDelegadoScenarios } from './inactivar-delegado';
+import { oblLegalScenarios } from './obligatorio-legal';
+import { oblReqScenarios } from './obligatorio-requerimiento';
 
 export const notificadorScenarios: Scenario[] = [
   noti01, noti02, noti03, noti04, noti05,
@@ -35,4 +37,6 @@ export const notificadorScenarios: Scenario[] = [
   ...reenvioScenarios,
   ...delegadoScenarios,
   ...inactivarDelegadoScenarios,
+  ...oblLegalScenarios,
+  ...oblReqScenarios,
 ];
