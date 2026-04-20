@@ -14,7 +14,9 @@
     "webhook": "tsx src/webhook/index.ts",
     "generar-token": "tsx src/webhook/generate-token.ts",
     "qa": "tsx src/qa/index.ts",
-    "qa:fixtures": "tsx src/qa/fixtures/generator.ts"
+    "qa:fixtures": "tsx src/qa/fixtures/generator.ts",
+    "qa:obl-legal": "tsx src/qa/index.ts --tag=obligatorio-legal",
+    "qa:obl-req": "tsx src/qa/index.ts --tag=obligatorio-requerimiento"
   },
   "keywords": [],
   "author": "",

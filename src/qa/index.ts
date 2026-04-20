@@ -52,12 +52,16 @@ if (showHelp) {
 
   Opciones:
     --module=<nombre>   Filtrar por módulo: proveedor | aprobador | notificador | avisos | qr-seguro | documentos-digitales
-    --tag=<tag>         Filtrar por tag: happy | negative | auth | file-type | hash | crypto | ...
-    --id=<id>           Ejecutar un escenario específico: prov-01, apro-03, noti-07, etc.
+    --tag=<tag>         Filtrar por tag: happy | negative | auth | obligatorio-legal | obligatorio-requerimiento | ...
+    --id=<id>           Ejecutar un escenario específico: prov-01, apro-03, noti-07, obl-req-00, etc.
     --save              Guardar reporte JSON en output/qa/reports/
     (Siempre)           Guardar cURL + response en output/qa/curls/run-<fecha>/<modulo>/<id>/
     --fixtures          Solo generar archivos de prueba y salir
     --help              Mostrar esta ayuda
+
+  Subcomandos por grupo de carácter:
+    npm run qa:obl-legal            Aceptación + happy path obligatorio legal
+    npm run qa:obl-req              Aceptación + happy path obligatorio requerimiento
 
   Ejemplos:
     npm run qa
@@ -65,6 +69,7 @@ if (showHelp) {
     npm run qa -- --tag=negative
     npm run qa -- --id=apro-03
     npm run qa -- --module=notificador --tag=validation
+    npm run qa:obl-req
     npm run qa:fixtures
   `);
   process.exit(0);
