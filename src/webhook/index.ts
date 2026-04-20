@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { JwtService } from "./jwt.service";
+import { verificarNonce } from "./nonce.service";
 import { logger } from "../utils/logger.util";
 import dayjs from "dayjs";
 import { fixturesPaths } from "../qa/fixtures/paths";
@@ -24,6 +25,8 @@ const FILE_DIR = fixturesPaths.dir;
 
 const PATH_PREFIX = (process.env.WEBHOOK_PATH_PREFIX ?? "").replace(/\/+$/, "");
 const JWT_ENABLED = process.env.WEBHOOK_JWT_ENABLED !== "false";
+const DOC_DIGITAL_URL_BASE = process.env.DOC_DIGITAL_URL_BASE ?? "";
+const DOC_DIGITAL_TOKEN = process.env.DOC_DIGITAL_TOKEN ?? "";
 
 // ── PATTERNS ─────────────────────────────────────────────────────
 const MECANISMO_PATTERN = new RegExp(
@@ -32,6 +35,10 @@ const MECANISMO_PATTERN = new RegExp(
 
 const FILE_ROUTE_PATTERN = new RegExp(
   `^${PATH_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/file(?:/([^/]+))?$`,
+);
+
+const DOCUMENTOS_DIGITALES_PATTERN = new RegExp(
+  `^${PATH_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/documentos-digitales$`,
 );
 
 const WRITE_METHODS = ["POST", "PUT", "PATCH"];
@@ -151,6 +158,38 @@ function htmlVisitado(mecanismo: string): string {
 </html>`;
 }
 
+interface NonceVerificacion {
+  curl: string;
+  status: number;
+  response: unknown;
+}
+
+function saveDocumentosDigitales(
+  method: string,
+  headers: Record<string, string | string[] | undefined>,
+  query: Record<string, string>,
+  body: unknown,
+  nonceVerificacion?: NonceVerificacion,
+): string {
+  const dir = path.join(OUTPUT_DIR, "documentos-digitales");
+  fs.mkdirSync(dir, { recursive: true });
+
+  const timestamp = dayjs().format("YYYY-MM-DD_HH-mm-ss");
+  const filename = `${timestamp}-documentos-digitales.json`;
+  const filePath = path.join(dir, filename);
+
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify(
+      { receivedAt: timestamp, method, headers, query, body, nonceVerificacion },
+      null,
+      2,
+    ),
+  );
+
+  return filePath;
+}
+
 // ── SERVER ───────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   setCors(res);
@@ -227,6 +266,103 @@ const server = http.createServer(async (req, res) => {
       }
 
       logger.ok("Archivo enviado");
+      return;
+    }
+
+    // ── DOCUMENTOS DIGITALES ────────────────────────────────────
+    if (DOCUMENTOS_DIGITALES_PATTERN.test(url.pathname)) {
+      logger.info("Validando JWT (documentos-digitales)");
+
+      const token = extractBearer(req);
+      if (!token) {
+        logger.warn("Token no proporcionado");
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Bearer token requerido" }));
+        return;
+      }
+
+      try {
+        JwtService.verify(token);
+        logger.ok("JWT válido");
+      } catch (err) {
+        logger.error("JWT inválido", err);
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "JWT inválido" }));
+        return;
+      }
+
+      const query: Record<string, string> = {};
+      url.searchParams.forEach((value, key) => { query[key] = value; });
+
+      const headers: Record<string, string | string[] | undefined> = { ...req.headers };
+      const body = method === "GET" ? null : await readBody(req);
+
+      logger.info("Recibiendo datos en documentos-digitales");
+      logger.debug("Query", query);
+      logger.debug("Body", body);
+
+      if (method === "GET") {
+        const nonce = query["nonce"];
+
+        if (!nonce) {
+          logger.warn("Nonce no proporcionado");
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Query param 'nonce' requerido" }));
+          return;
+        }
+
+        if (!DOC_DIGITAL_URL_BASE || !DOC_DIGITAL_TOKEN) {
+          logger.warn("DOC_DIGITAL_URL_BASE o DOC_DIGITAL_TOKEN no configurados");
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Servicio de verificación no configurado" }));
+          return;
+        }
+
+        logger.info(`Verificando nonce: ${nonce}`);
+        const result = await verificarNonce(DOC_DIGITAL_URL_BASE, DOC_DIGITAL_TOKEN, nonce);
+
+        let responseJson: unknown;
+        try { responseJson = JSON.parse(result.rawResponse); } catch { responseJson = result.rawResponse; }
+
+        const filePath = saveDocumentosDigitales(method, headers, query, body, {
+          curl: result.curl,
+          status: result.status,
+          response: responseJson,
+        });
+
+        logger.ok("Datos guardados");
+        logger.info(`Archivo: ${filePath}`);
+        logger.debug("curl", result.curl);
+        logger.info(`Respuesta HTTP verificación: ${result.status}`);
+        logger.debug("response", result.rawResponse);
+
+        if (!result.ok) {
+          logger.warn(`Nonce inválido (${result.status}): ${result.data.mensaje}`);
+          res.writeHead(result.status, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(result.data));
+          return;
+        }
+
+        logger.ok("Nonce verificado correctamente");
+
+        const ok = sendFile(res, fixturesPaths.validPdf);
+        if (!ok) {
+          logger.warn("PDF no encontrado — ejecuta npm run qa:fixtures");
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "PDF no encontrado. Ejecuta: npm run qa:fixtures" }));
+        } else {
+          logger.ok("PDF enviado");
+        }
+        return;
+      }
+
+      const filePath = saveDocumentosDigitales(method, headers, query, body);
+
+      logger.ok("Datos guardados");
+      logger.info(`Archivo: ${filePath}`);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, savedAt: filePath }));
       return;
     }
 
@@ -322,5 +458,6 @@ server.listen(PORT, () => {
   logger.info(`Puerto: ${PORT}`);
   logger.info(`Webhook: ${webhookBase}/:mecanismo`);
   logger.info(`Files: ${fileBase}/:name`);
+  logger.info(`Documentos Digitales: http://localhost:${PORT}${PATH_PREFIX}/documentos-digitales`);
   logger.info(`JWT: ${JWT_ENABLED ? "habilitado" : "deshabilitado"}`);
 });
