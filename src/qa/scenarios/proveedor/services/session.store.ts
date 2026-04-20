@@ -26,6 +26,7 @@ export interface ProveedorSessionStore {
   runtime: {
     lastAuthorizationCode?: string;
     lastCallbackParams?: Record<string, string>;
+    authorizationUrl?: string;
     startedAt?: string;
     accessToken?: string;
     lastTokenResponse?: Record<string, unknown>;
@@ -70,5 +71,27 @@ export function setLastAuthorizationCode(
 
 export function setAccessToken(token: string): void {
   store.runtime.accessToken = token;
+}
+
+export interface LoginSessionSnapshot {
+  authorizationUrl?: string;
+  callbackParams?: Record<string, string>;
+  authorizationCode?: string;
+  startedAt?: string;
+  tokenResponse?: Record<string, unknown>;
+  accessToken?: string;
+}
+
+export function getLoginSessionSnapshot(): LoginSessionSnapshot | undefined {
+  const { runtime } = store;
+  if (!runtime.accessToken && !runtime.lastTokenResponse) return undefined;
+  return {
+    authorizationUrl: runtime.authorizationUrl,
+    callbackParams: runtime.lastCallbackParams,
+    authorizationCode: runtime.lastAuthorizationCode,
+    startedAt: runtime.startedAt,
+    tokenResponse: runtime.lastTokenResponse,
+    accessToken: runtime.accessToken,
+  };
 }
 

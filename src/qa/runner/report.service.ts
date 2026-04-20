@@ -3,6 +3,8 @@ import path from 'path';
 import chalk from 'chalk';
 import type { ScenarioResult } from '../types/scenario.types';
 import type { Scenario } from '../types/scenario.types';
+import { getLoginSessionSnapshot } from '../scenarios/proveedor/services/session.store';
+import { getMobileLoginSessionSnapshot } from '../scenarios/proveedor/services/mobile-session.store';
 
 export interface RunSummary {
   results: ScenarioResult[];
@@ -165,12 +167,14 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
 
     fs.writeFileSync(path.join(scenarioDir, 'request.sh'), curlScript);
 
+    const loginSession = getLoginSessionSnapshot() ?? getMobileLoginSessionSnapshot();
     const responseSnapshot = {
       savedAt: new Date().toISOString(),
       scenario: { id: result.scenarioId, name: result.scenarioName, module: result.module, tags: result.tags },
       passed: result.passed,
       failures: result.failures,
       response: { localError: result.actual.localError, durationMs: result.actual.durationMs },
+      ...(loginSession ? { loginSession } : {}),
     };
     fs.writeFileSync(path.join(scenarioDir, 'response.json'), `${JSON.stringify(responseSnapshot, null, 2)}\n`);
     return;
@@ -230,6 +234,7 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
 
   fs.writeFileSync(path.join(scenarioDir, 'request.sh'), curlScript);
 
+  const loginSession = getLoginSessionSnapshot() ?? getMobileLoginSessionSnapshot();
   const responseSnapshot = {
     savedAt: new Date().toISOString(),
     scenario: {
@@ -246,6 +251,7 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
       localError: result.actual.localError,
       durationMs: result.actual.durationMs,
     },
+    ...(loginSession ? { loginSession } : {}),
   };
   fs.writeFileSync(
     path.join(scenarioDir, 'response.json'),

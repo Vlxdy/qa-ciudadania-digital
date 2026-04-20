@@ -17,7 +17,9 @@ export interface MobileSessionStore {
   runtime: {
     codeVerifier?: string;
     lastCallbackParams?: Record<string, string>;
+    authorizationUrl?: string;
     lastTokenResponse?: Record<string, unknown>;
+    accessToken?: string;
   };
 }
 
@@ -44,4 +46,24 @@ export function getMobileSessionStore(): MobileSessionStore {
 
 export function setMobileCodeVerifier(verifier: string): void {
   mobileStore.runtime.codeVerifier = verifier;
+}
+
+export interface MobileLoginSessionSnapshot {
+  authorizationUrl?: string;
+  callbackParams?: Record<string, string>;
+  codeVerifier?: string;
+  tokenResponse?: Record<string, unknown>;
+  accessToken?: string;
+}
+
+export function getMobileLoginSessionSnapshot(): MobileLoginSessionSnapshot | undefined {
+  const { runtime } = mobileStore;
+  if (!runtime.accessToken && !runtime.lastTokenResponse) return undefined;
+  return {
+    authorizationUrl: runtime.authorizationUrl,
+    callbackParams: runtime.lastCallbackParams,
+    codeVerifier: runtime.codeVerifier,
+    tokenResponse: runtime.lastTokenResponse,
+    accessToken: runtime.accessToken,
+  };
 }

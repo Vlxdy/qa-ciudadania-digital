@@ -232,6 +232,7 @@ export async function runQaProveedorLogin(): Promise<ProveedorLoginResult> {
   }
 
   setLastAuthorizationCode(callbackParams.code, callbackParams);
+  getProveedorSessionStore().runtime.authorizationUrl = authorizationUrl;
   debugLog("Authorization code capturado en session store.");
 
   return { callbackParams, authorizationUrl };
@@ -313,7 +314,9 @@ export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
     throw new Error("No llegó authorization code.");
   }
 
-  getMobileSessionStore().runtime.lastCallbackParams = callbackParams;
+  const mobileRuntime = getMobileSessionStore().runtime;
+  mobileRuntime.lastCallbackParams = callbackParams;
+  mobileRuntime.authorizationUrl = authorizationUrl;
   debugLog("Authorization code móvil capturado en mobile session store.");
 
   return { callbackParams, authorizationUrl };
