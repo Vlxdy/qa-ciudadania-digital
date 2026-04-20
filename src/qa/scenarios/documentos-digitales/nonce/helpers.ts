@@ -47,6 +47,6 @@ export const nonceUrl = () => `${qaEnv.DOC_DIGITAL_URL_BASE}/api/nonce/verificar
 
 export const defaultToken = () => qaEnv.DOC_DIGITAL_TOKEN;
 
-export function buildNonceBody(): NonceInput {
-  return { nonce: qaEnv.DOC_DIGITAL_NONCE };
+export function buildNonceBody(nonce: string): NonceInput {
+  return { nonce };
 }

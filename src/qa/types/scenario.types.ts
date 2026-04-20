@@ -30,6 +30,8 @@ export interface ScenarioActual {
   /** Error capturado antes de llegar al HTTP (Zod, throw local, crypto, fs, etc.) */
   localError?: string;
   durationMs: number;
+  /** Datos adicionales de pasos previos (p.ej. respuesta del generador de nonce) */
+  context?: Record<string, unknown>;
 }
 
 export interface QaRequestTrace {

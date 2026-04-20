@@ -133,9 +133,6 @@ export const qaEnv = {
   // Token Bearer generado en el módulo Developer al crear el documento digital
   DOC_DIGITAL_TOKEN: process.env.DOC_DIGITAL_TOKEN ?? '',
 
-  // Nonce válido y no utilizado para el escenario happy path (uso único — regenerar antes de cada run)
-  DOC_DIGITAL_NONCE: process.env.DOC_DIGITAL_NONCE ?? '',
-
   // Código UUID del documento digital creado en Developer (para generación de nonce)
   DOC_DIGITAL_CODIGO_DOCUMENTO: process.env.DOC_DIGITAL_CODIGO_DOCUMENTO ?? '',
 

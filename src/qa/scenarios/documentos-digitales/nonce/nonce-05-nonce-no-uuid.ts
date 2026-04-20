@@ -14,6 +14,7 @@ const META = {
 
 const EXPECTED = {
   success: false,
+  statusCode: 400,
   validationFields: ['nonce'],
 };
 

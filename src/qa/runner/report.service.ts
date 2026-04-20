@@ -174,6 +174,7 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
       passed: result.passed,
       failures: result.failures,
       response: { localError: result.actual.localError, durationMs: result.actual.durationMs },
+      ...(result.actual.context ? { context: result.actual.context } : {}),
       ...(loginSession ? { loginSession } : {}),
     };
     fs.writeFileSync(path.join(scenarioDir, 'response.json'), `${JSON.stringify(responseSnapshot, null, 2)}\n`);
@@ -251,6 +252,7 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
       localError: result.actual.localError,
       durationMs: result.actual.durationMs,
     },
+    ...(result.actual.context ? { context: result.actual.context } : {}),
     ...(loginSession ? { loginSession } : {}),
   };
   fs.writeFileSync(
