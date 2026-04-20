@@ -16,7 +16,8 @@ const META = {
 
 const EXPECTED = {
   success: false,
-  httpStatus: 401,
+  httpStatus: 412,
+  bodyContains: ['Ciudadano no autorizado.'],
 };
 
 export const scenario: Scenario = {

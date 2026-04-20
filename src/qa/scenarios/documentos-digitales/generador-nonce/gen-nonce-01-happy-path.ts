@@ -8,7 +8,7 @@ import type { Scenario, ScenarioResult } from '../../../types/scenario.types';
 import { makeResult } from '../../../types/scenario.types';
 import { qaPost } from '../../../http/qa-http';
 import { generadorNonceUrl, buildGeneradorNonceBody } from './helpers';
-import { ensureAccessToken } from '../../proveedor/services/token-provider';
+import { ensureMobileAccessToken } from '../../proveedor/services/token-provider';
 
 const META = {
   id: 'gen-nonce-01',
@@ -29,7 +29,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const token = await ensureAccessToken();
+      const token = await ensureMobileAccessToken();
       const response = await qaPost(
         generadorNonceUrl(),
         buildGeneradorNonceBody(),

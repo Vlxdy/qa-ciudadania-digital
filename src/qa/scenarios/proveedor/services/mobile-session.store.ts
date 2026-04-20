@@ -48,6 +48,10 @@ export function setMobileCodeVerifier(verifier: string): void {
   mobileStore.runtime.codeVerifier = verifier;
 }
 
+export function setMobileAccessToken(token: string): void {
+  mobileStore.runtime.accessToken = token;
+}
+
 export interface MobileLoginSessionSnapshot {
   authorizationUrl?: string;
   callbackParams?: Record<string, string>;
