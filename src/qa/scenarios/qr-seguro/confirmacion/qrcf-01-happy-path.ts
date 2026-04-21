@@ -19,7 +19,7 @@ const META = {
 
 const EXPECTED = {
   success: true,
-  httpStatus: 200,
+  httpStatus: 201,
   bodyContains: ['finalizado', 'codigoTransaccion'],
 };
 

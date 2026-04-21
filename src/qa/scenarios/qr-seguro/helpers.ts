@@ -8,6 +8,20 @@ import { qaEnv } from '../../config/qa-env';
 import { qaPost } from '../../http/qa-http';
 import { ensureAccessToken } from '../proveedor/services/token-provider';
 
+function formatDate(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+function buildFechas(): { fechaEmision: string; fechaExpiracion: string } {
+  const emision = new Date();
+  const expiracion = new Date(emision);
+  expiracion.setDate(expiracion.getDate() + 1);
+  return { fechaEmision: formatDate(emision), fechaExpiracion: formatDate(expiracion) };
+}
+
 // ─── Builder dinámico ────────────────────────────────────────────────────────
 
 /** Construye el body completo para la generación de QR.
@@ -15,6 +29,7 @@ import { ensureAccessToken } from '../proveedor/services/token-provider';
  *  Si el store no tiene token ejecuta el flujo OAuth automáticamente. */
 export async function buildQrSeguroBody(): Promise<QrSeguroInput> {
   const accessToken = await ensureAccessToken();
+  const { fechaEmision, fechaExpiracion } = buildFechas();
   return {
     accessToken,
     mostrarEnlace: false,
@@ -24,8 +39,8 @@ export async function buildQrSeguroBody(): Promise<QrSeguroInput> {
       nombreDocumento: qaEnv.QR_SEGURO_NOMBRE_DOCUMENTO,
       descripcionDocumento: qaEnv.QR_SEGURO_DESCRIPCION_DOCUMENTO,
       validez: {
-        fechaEmision: qaEnv.QR_SEGURO_FECHA_EMISION,
-        fechaExpiracion: qaEnv.QR_SEGURO_FECHA_EXPIRACION,
+        fechaEmision,
+        fechaExpiracion,
       },
       titulares: [
         {
