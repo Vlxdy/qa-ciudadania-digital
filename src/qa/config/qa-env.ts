@@ -6,6 +6,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Persona base del operador QA.
+// Es el fallback para notificador, autoridad, representante delegado y titular QR.
+// Sobreescribe cada campo individualmente en .env si un escenario requiere una persona distinta.
+const operadorNumeroDoc = process.env.QA_OPERADOR_NUMERO_DOC ?? 'NONE';
+const operadorFechaNac  = process.env.QA_OPERADOR_FECHA_NAC  ?? 'NONE';
+
 export const qaEnv = {
   // ─── Aprobador ────────────────────────────────────────────────────────────
   APROBADOR_URL: process.env.APROBADOR_URL ?? '',
@@ -20,43 +26,42 @@ export const qaEnv = {
   RSA_PADDING: (process.env.RSA_PADDING ?? 'PKCS1') as 'PKCS1' | 'OAEP',
 
   // ─── Notificador — datos de la notificación ───────────────────────────────
-  // Contenido de la notificación
   NOTI_TITULO: process.env.NOTI_TITULO ?? 'Notificación de prueba QA',
   NOTI_DESCRIPCION: process.env.NOTI_DESCRIPCION ?? 'Se notifica al ciudadano sobre el proceso de prueba automatizada.',
 
-  // Ciudadano notificador
+  // Ciudadano notificador — fallback a QA_OPERADOR_*
   NOTI_NOTIFICADOR_TIPO_DOC: (process.env.NOTI_NOTIFICADOR_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  NOTI_NOTIFICADOR_NUMERO_DOC: process.env.NOTI_NOTIFICADOR_NUMERO_DOC ?? 'NONE',
-  NOTI_NOTIFICADOR_FECHA_NAC: process.env.NOTI_NOTIFICADOR_FECHA_NAC ?? 'NONE',
+  NOTI_NOTIFICADOR_NUMERO_DOC: process.env.NOTI_NOTIFICADOR_NUMERO_DOC ?? operadorNumeroDoc,
+  NOTI_NOTIFICADOR_FECHA_NAC:  process.env.NOTI_NOTIFICADOR_FECHA_NAC  ?? operadorFechaNac,
 
-  // Ciudadano autoridad
+  // Ciudadano autoridad — fallback a QA_OPERADOR_*
   NOTI_AUTORIDAD_TIPO_DOC: (process.env.NOTI_AUTORIDAD_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  NOTI_AUTORIDAD_NUMERO_DOC: process.env.NOTI_AUTORIDAD_NUMERO_DOC ?? 'NONE',
-  NOTI_AUTORIDAD_FECHA_NAC: process.env.NOTI_AUTORIDAD_FECHA_NAC ?? 'NONE',
+  NOTI_AUTORIDAD_NUMERO_DOC: process.env.NOTI_AUTORIDAD_NUMERO_DOC ?? operadorNumeroDoc,
+  NOTI_AUTORIDAD_FECHA_NAC:  process.env.NOTI_AUTORIDAD_FECHA_NAC  ?? operadorFechaNac,
 
   // Ciudadano notificado principal (CI)
   NOTI_NOTIFICADO_TIPO_DOC: (process.env.NOTI_NOTIFICADO_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
   NOTI_NOTIFICADO_NUMERO_DOC: process.env.NOTI_NOTIFICADO_NUMERO_DOC ?? '5585535',
-  NOTI_NOTIFICADO_FECHA_NAC: process.env.NOTI_NOTIFICADO_FECHA_NAC ?? '1974-01-31',
+  NOTI_NOTIFICADO_FECHA_NAC:  process.env.NOTI_NOTIFICADO_FECHA_NAC  ?? '1974-01-31',
 
-  // Ciudadano notificado secundario (para escenario CIE)
+  // Ciudadano notificado secundario (para escenario CIE — noti-20)
   NOTI_NOTIFICADO_CIE_NUMERO_DOC: process.env.NOTI_NOTIFICADO_CIE_NUMERO_DOC ?? 'NONE',
-  NOTI_NOTIFICADO_CIE_FECHA_NAC: process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC ?? 'NONE',
+  NOTI_NOTIFICADO_CIE_FECHA_NAC:  process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC  ?? 'NONE',
 
   // Enlace adjunto principal (tipo APROBACION)
-  NOTI_ENLACE_URL: process.env.NOTI_ENLACE_URL ?? 'https://example.com/qa/documento.pdf',
+  NOTI_ENLACE_URL:      process.env.NOTI_ENLACE_URL      ?? 'https://example.com/qa/documento.pdf',
   NOTI_ENLACE_ETIQUETA: process.env.NOTI_ENLACE_ETIQUETA ?? 'Documento QA',
   NOTI_ENLACE_TIPO: (process.env.NOTI_ENLACE_TIPO ?? 'APROBACION') as 'FIRMA' | 'APROBACION',
   // Si está vacío, helpers.ts computará el hash descargando el archivo (o usará placeholder)
   NOTI_ENLACE_HASH: process.env.NOTI_ENLACE_HASH ?? '',
 
-  // Enlace para archivo firmado digitalmente (tipo FIRMA) — usado en noti-19 y similares
-  NOTI_ENLACE_FIRMA_URL: process.env.NOTI_ENLACE_FIRMA_URL ?? 'https://example.com/qa/firmado.pdf',
+  // Enlace para archivo firmado digitalmente (tipo FIRMA) — noti-19 y similares
+  NOTI_ENLACE_FIRMA_URL:      process.env.NOTI_ENLACE_FIRMA_URL      ?? 'https://example.com/qa/firmado.pdf',
   NOTI_ENLACE_FIRMA_ETIQUETA: process.env.NOTI_ENLACE_FIRMA_ETIQUETA ?? 'Documento Firmado QA',
   NOTI_ENLACE_FIRMA_HASH: process.env.NOTI_ENLACE_FIRMA_HASH ?? '',
 
   // Formulario de notificación
-  NOTI_FORMULARIO_URL: process.env.NOTI_FORMULARIO_URL ?? 'https://example.com/qa/formulario.pdf',
+  NOTI_FORMULARIO_URL:      process.env.NOTI_FORMULARIO_URL      ?? 'https://example.com/qa/formulario.pdf',
   NOTI_FORMULARIO_ETIQUETA: process.env.NOTI_FORMULARIO_ETIQUETA ?? 'Formulario QA',
   NOTI_FORMULARIO_TIPO: (process.env.NOTI_FORMULARIO_TIPO ?? 'FIRMA') as 'FIRMA' | 'APROBACION',
   NOTI_FORMULARIO_HASH: process.env.NOTI_FORMULARIO_HASH ?? '',
@@ -65,98 +70,65 @@ export const qaEnv = {
   NOTI_ENTIDAD_NOTIFICADORA: process.env.NOTI_ENTIDAD_NOTIFICADORA ?? '',
 
   // ─── Delegado de Entidad Pública ─────────────────────────────────────────
-  // Código gob.bo de la entidad para la cual se solicita el delegado
   NOTI_DELEGADO_CODIGO_ENTIDAD: process.env.NOTI_DELEGADO_CODIGO_ENTIDAD ?? '97',
-
-  // Descripción de la solicitud de delegado
   NOTI_DELEGADO_DESCRIPCION: process.env.NOTI_DELEGADO_DESCRIPCION ?? 'Solicitud de delegación de buzón de entidad para pruebas QA.',
 
-  // Representante legal que recibirá la autorización de delegación
+  // Representante legal — fallback a QA_OPERADOR_*
   NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC: (process.env.NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: process.env.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? 'NONE',
-  NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC: process.env.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC ?? 'NONE',
+  NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: process.env.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? operadorNumeroDoc,
+  NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC:  process.env.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC  ?? operadorFechaNac,
 
   // ─── QR-Seguro ───────────────────────────────────────────────────────────
-  // URL base del servicio QR-Seguro (generada en módulo Developer)
   QR_SEGURO_URL_BASE: process.env.QR_SEGURO_URL_BASE ?? '',
+  QR_SEGURO_TOKEN:    process.env.QR_SEGURO_TOKEN    ?? '',
 
-  // Token Bearer del proyecto en Developer (header Authorization)
-  QR_SEGURO_TOKEN: process.env.QR_SEGURO_TOKEN ?? '',
-
-  // Datos del documento digital de prueba
-  QR_SEGURO_CODIGO_DOCUMENTO: process.env.QR_SEGURO_CODIGO_DOCUMENTO ?? 'R20-2024-000124QA',
-  QR_SEGURO_NOMBRE_DOCUMENTO: process.env.QR_SEGURO_NOMBRE_DOCUMENTO ?? 'Certificado QA de Prueba',
+  QR_SEGURO_CODIGO_DOCUMENTO:      process.env.QR_SEGURO_CODIGO_DOCUMENTO      ?? 'R20-2024-000124QA',
+  QR_SEGURO_NOMBRE_DOCUMENTO:      process.env.QR_SEGURO_NOMBRE_DOCUMENTO      ?? 'Certificado QA de Prueba',
   QR_SEGURO_DESCRIPCION_DOCUMENTO: process.env.QR_SEGURO_DESCRIPCION_DOCUMENTO ?? 'Documento generado por el runner QA.',
-  // Datos del titular principal del documento
-  QR_SEGURO_TITULAR_NOMBRE: process.env.QR_SEGURO_TITULAR_NOMBRE ?? 'CIUDADANO QA',
+
+  // Titular del documento — fallback a QA_OPERADOR_* para número de doc
+  QR_SEGURO_TITULAR_NOMBRE:     process.env.QR_SEGURO_TITULAR_NOMBRE     ?? 'CIUDADANO QA',
   QR_SEGURO_TITULAR_TIPO_DOC: (process.env.QR_SEGURO_TITULAR_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  QR_SEGURO_TITULAR_NUMERO_DOC: process.env.QR_SEGURO_TITULAR_NUMERO_DOC ?? '12345678',
-  QR_SEGURO_TITULAR_ROL: process.env.QR_SEGURO_TITULAR_ROL ?? 'NATURAL',
+  QR_SEGURO_TITULAR_NUMERO_DOC: process.env.QR_SEGURO_TITULAR_NUMERO_DOC ?? operadorNumeroDoc,
+  QR_SEGURO_TITULAR_ROL:        process.env.QR_SEGURO_TITULAR_ROL        ?? 'NATURAL',
 
   // ─── Avisos ───────────────────────────────────────────────────────────────
-  // URL base del servicio de avisos (generada en módulo Developer al crear plantilla)
-  AVISOS_URL_BASE: process.env.AVISOS_URL_BASE ?? '',
-
-  // Token Bearer generado en módulo Developer al crear la plantilla de aviso
-  AVISOS_TOKEN: process.env.AVISOS_TOKEN ?? '',
-
-  // Código UUID de la plantilla de aviso creada en Developer
+  AVISOS_URL_BASE:         process.env.AVISOS_URL_BASE         ?? '',
+  AVISOS_TOKEN:            process.env.AVISOS_TOKEN            ?? '',
   AVISOS_CODIGO_PLANTILLA: process.env.AVISOS_CODIGO_PLANTILLA ?? '',
-
-  // UUID del ciudadano digital de prueba (receptor principal del aviso)
-  AVISOS_UUID_CIUDADANO: process.env.AVISOS_UUID_CIUDADANO ?? '',
-
-  // UUID de un segundo ciudadano (para escenarios de envío múltiple)
+  AVISOS_UUID_CIUDADANO:   process.env.AVISOS_UUID_CIUDADANO   ?? '',
   AVISOS_UUID_CIUDADANO_2: process.env.AVISOS_UUID_CIUDADANO_2 ?? '',
-
-  // Parámetro dinámico 1 de la plantilla (se reemplaza en {{1}})
-  AVISOS_PARAMETRO_1: process.env.AVISOS_PARAMETRO_1 ?? 'Ciudadano QA',
-
-  // Fragmento adicional para URL de redirección (parametroRedireccion)
+  AVISOS_PARAMETRO_1:           process.env.AVISOS_PARAMETRO_1           ?? 'Ciudadano QA',
   AVISOS_PARAMETRO_REDIRECCION: process.env.AVISOS_PARAMETRO_REDIRECCION ?? 'tramite/qa-test',
 
   // ─── Notificador — Obligatorio Legal ─────────────────────────────────────
-  // Configuración separada para notificaciones de carácter obligatorio legal
-  ISSUER_NOTIFICADOR_OBL_LEGAL: process.env.ISSUER_NOTIFICADOR_OBL_LEGAL ?? '',
+  ISSUER_NOTIFICADOR_OBL_LEGAL:  process.env.ISSUER_NOTIFICADOR_OBL_LEGAL  ?? '',
   TOKEN_CONFIGURACION_OBL_LEGAL: process.env.TOKEN_CONFIGURACION_OBL_LEGAL ?? '',
 
   // ─── Notificador — Obligatorio Requerimiento ──────────────────────────────
-  // Configuración separada para notificaciones de carácter obligatorio requerimiento
-  ISSUER_NOTIFICADOR_OBL_REQ: process.env.ISSUER_NOTIFICADOR_OBL_REQ ?? '',
+  ISSUER_NOTIFICADOR_OBL_REQ:  process.env.ISSUER_NOTIFICADOR_OBL_REQ  ?? '',
   TOKEN_CONFIGURACION_OBL_REQ: process.env.TOKEN_CONFIGURACION_OBL_REQ ?? '',
 
-  // ─── Notificador Jurídico (entidad pública) ───────────────────────────────
-  // Código gob.bo de la entidad principal que recibirá la notificación jurídica
-  NOTI_JURIDICO_CODIGO_ENTIDAD: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD ?? '340',
-
-  // Código gob.bo de una segunda entidad (para escenarios de múltiples notificados)
+  // ─── Notificador Jurídico ─────────────────────────────────────────────────
+  NOTI_JURIDICO_CODIGO_ENTIDAD:   process.env.NOTI_JURIDICO_CODIGO_ENTIDAD   ?? '340',
   NOTI_JURIDICO_CODIGO_ENTIDAD_2: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD_2 ?? '341',
 
-
   // ─── Documentos Digitales ────────────────────────────────────────────────
-  // URL base del servicio de Documentos Digitales
-  DOC_DIGITAL_URL_BASE: process.env.DOC_DIGITAL_URL_BASE ?? '',
-
-  // Token Bearer generado en el módulo Developer al crear el documento digital
-  DOC_DIGITAL_TOKEN: process.env.DOC_DIGITAL_TOKEN ?? '',
-
-  // Código UUID del documento digital creado en Developer (para generación de nonce)
+  DOC_DIGITAL_URL_BASE:        process.env.DOC_DIGITAL_URL_BASE        ?? '',
+  DOC_DIGITAL_TOKEN:           process.env.DOC_DIGITAL_TOKEN           ?? '',
   DOC_DIGITAL_CODIGO_DOCUMENTO: process.env.DOC_DIGITAL_CODIGO_DOCUMENTO ?? '',
 
   // ─── Proveedor ────────────────────────────────────────────────────────────
-  OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',
-  OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID ?? '',
-  OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET ?? '',
-  OIDC_REDIRECT_URI: process.env.OIDC_REDIRECT_URI ?? '',
-  OIDC_TOKEN_PATH: process.env.OIDC_TOKEN_PATH ?? '/token',
-  OIDC_CLIENT_AUTH_METHOD: (process.env.OIDC_CLIENT_AUTH_METHOD ?? 'post') as
-    | 'post'
-    | 'basic'
-    | 'mobile',
-  OIDC_SCOPE: process.env.OIDC_SCOPE ?? 'openid profile',
+  OIDC_ISSUER:             process.env.OIDC_ISSUER             ?? '',
+  OIDC_CLIENT_ID:          process.env.OIDC_CLIENT_ID          ?? '',
+  OIDC_CLIENT_SECRET:      process.env.OIDC_CLIENT_SECRET      ?? '',
+  OIDC_REDIRECT_URI:       process.env.OIDC_REDIRECT_URI       ?? '',
+  OIDC_TOKEN_PATH:         process.env.OIDC_TOKEN_PATH         ?? '/token',
+  OIDC_CLIENT_AUTH_METHOD: (process.env.OIDC_CLIENT_AUTH_METHOD ?? 'post') as 'post' | 'basic' | 'mobile',
+  OIDC_SCOPE:              process.env.OIDC_SCOPE              ?? 'openid profile',
 
   // ─── Proveedor — autenticación móvil (PKCE) ───────────────────────────────
-  OIDC_MOBILE_CLIENT_ID: process.env.OIDC_MOBILE_CLIENT_ID ?? '',
+  OIDC_MOBILE_CLIENT_ID:    process.env.OIDC_MOBILE_CLIENT_ID    ?? '',
   OIDC_MOBILE_REDIRECT_URI: process.env.OIDC_MOBILE_REDIRECT_URI ?? '',
   OIDC_MOBILE_SCOPE: process.env.OIDC_MOBILE_SCOPE ?? process.env.OIDC_SCOPE ?? 'openid profile',
 } as const;
@@ -173,23 +145,23 @@ export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 
       TOKEN_CONFIGURACION: qaEnv.TOKEN_CONFIGURACION,
     },
     proveedor: {
-      OIDC_ISSUER: qaEnv.OIDC_ISSUER,
-      OIDC_CLIENT_ID: qaEnv.OIDC_CLIENT_ID,
+      OIDC_ISSUER:       qaEnv.OIDC_ISSUER,
+      OIDC_CLIENT_ID:    qaEnv.OIDC_CLIENT_ID,
       OIDC_REDIRECT_URI: qaEnv.OIDC_REDIRECT_URI,
     },
     avisos: {
-      AVISOS_URL_BASE: qaEnv.AVISOS_URL_BASE,
-      AVISOS_TOKEN: qaEnv.AVISOS_TOKEN,
+      AVISOS_URL_BASE:         qaEnv.AVISOS_URL_BASE,
+      AVISOS_TOKEN:            qaEnv.AVISOS_TOKEN,
       AVISOS_CODIGO_PLANTILLA: qaEnv.AVISOS_CODIGO_PLANTILLA,
-      AVISOS_UUID_CIUDADANO: qaEnv.AVISOS_UUID_CIUDADANO,
+      AVISOS_UUID_CIUDADANO:   qaEnv.AVISOS_UUID_CIUDADANO,
     },
     'qr-seguro': {
       QR_SEGURO_URL_BASE: qaEnv.QR_SEGURO_URL_BASE,
-      QR_SEGURO_TOKEN: qaEnv.QR_SEGURO_TOKEN,
+      QR_SEGURO_TOKEN:    qaEnv.QR_SEGURO_TOKEN,
     },
     'documentos-digitales': {
-      DOC_DIGITAL_URL_BASE: qaEnv.DOC_DIGITAL_URL_BASE,
-      DOC_DIGITAL_TOKEN: qaEnv.DOC_DIGITAL_TOKEN,
+      DOC_DIGITAL_URL_BASE:        qaEnv.DOC_DIGITAL_URL_BASE,
+      DOC_DIGITAL_TOKEN:           qaEnv.DOC_DIGITAL_TOKEN,
       DOC_DIGITAL_CODIGO_DOCUMENTO: qaEnv.DOC_DIGITAL_CODIGO_DOCUMENTO,
     },
   };
