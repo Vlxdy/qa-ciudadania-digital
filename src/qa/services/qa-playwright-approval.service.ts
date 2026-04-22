@@ -127,9 +127,17 @@ export class QaPlaywrightApprovalService {
 
       // APROBACIÓN
       await page.getByRole("button", { name: /aprobar/i }).click();
-      await page
-        .getByRole("button", { name: /otro medio de verificación/i })
-        .click();
+      // await page
+      //   .getByRole("button", { name: /otro medio de verificación/i })
+      //   .click();
+      const otroMedioBtn = page.getByRole("button", { name: /otro medio/i });
+
+      try {
+        await otroMedioBtn.waitFor({ timeout: 2000 });
+        await otroMedioBtn.click();
+      } catch {
+        // no existe → seguimos flujo normal
+      }
       await page.locator('input[name="tipoVerificacion"][value="SMS"]').check();
       await page.getByRole("button", { name: /aceptar/i }).click();
 

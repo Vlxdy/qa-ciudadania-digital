@@ -68,7 +68,15 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     await page.locator("#login").fill(cedula);
     await page.locator("#password").fill(contrasena);
     await page.locator("#continuar").click();
-    await page.getByRole("button", { name: /otro medio/i }).click();
+    // await page.getByRole("button", { name: /otro medio/i }).click();
+    const otroMedioBtn = page.getByRole("button", { name: /otro medio/i });
+
+    try {
+      await otroMedioBtn.waitFor({ timeout: 2000 });
+      await otroMedioBtn.click();
+    } catch {
+      // no existe → seguimos flujo normal
+    }
     // await page
     // .locator('input[type="radio"][name="method"][value="TOTP"]')
     // .check();
@@ -225,10 +233,10 @@ export async function runQaProveedorLogin(): Promise<ProveedorLoginResult> {
     callbackParams = callbackPromise
       ? await callbackPromise
       : await waitForRedirectInBrowser(
-          page,
-          config.redirectUri,
-          config.timeoutMs,
-        );
+        page,
+        config.redirectUri,
+        config.timeoutMs,
+      );
   } finally {
     await browser.close();
   }
