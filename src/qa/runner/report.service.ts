@@ -63,6 +63,21 @@ export function printScenarioResultLive(result: ScenarioResult): void {
   }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDuration(ms: number): string {
+  if (ms >= 60_000) return `${(ms / 60_000).toFixed(1)}min`;
+  if (ms >= 1_000) return `${(ms / 1_000).toFixed(2)}s`;
+  return `${ms}ms`;
+}
+
+function pctColor(pct: number, hasFailed: boolean): string {
+  const label = `${pct}%`;
+  if (!hasFailed) return chalk.green(label);
+  if (pct >= 80) return chalk.yellow(label);
+  return chalk.red(label);
+}
+
 // ─── Consola ──────────────────────────────────────────────────────────────────
 
 export function printReport(summary: RunSummary): void {
@@ -71,9 +86,9 @@ export function printReport(summary: RunSummary): void {
   const failed = results.filter((r) => !r.passed);
 
   console.log('');
-  console.log(chalk.cyan.bold('═'.repeat(60)));
+  console.log(chalk.cyan.bold('═'.repeat(66)));
   console.log(chalk.cyan.bold('  REPORTE QA'));
-  console.log(chalk.cyan.bold('═'.repeat(60)));
+  console.log(chalk.cyan.bold('═'.repeat(66)));
 
   // Agrupar por módulo
   const byModule = new Map<string, ScenarioResult[]>();
@@ -83,8 +98,24 @@ export function printReport(summary: RunSummary): void {
   }
 
   for (const [mod, modResults] of byModule) {
+    const modPassed = modResults.filter((r) => r.passed).length;
+    const modFailed = modResults.filter((r) => !r.passed).length;
+    const modTotal = modResults.length;
+    const modPct = Math.round((modPassed / modTotal) * 100);
+    const modDur = modResults.reduce((acc, r) => acc + r.actual.durationMs, 0);
+
+    const passLabel = chalk.green(`${modPassed} ✔`);
+    const failLabel = modFailed > 0 ? chalk.red(`${modFailed} ✖`) : chalk.gray(`0 ✖`);
+    const pctLabel = pctColor(modPct, modFailed > 0);
+    const durLabel = chalk.gray(`(${formatDuration(modDur)})`);
+
     console.log('');
-    console.log(chalk.magenta.bold(`  ▸ ${mod.toUpperCase()}`));
+    console.log(
+      chalk.magenta.bold(`  ▸ ${mod.toUpperCase()}`) +
+      chalk.gray(` — ${modTotal} escenarios`) +
+      `  ${passLabel}  ${failLabel}  ${pctLabel}  ${durLabel}`,
+    );
+
     for (const r of modResults) {
       const dur = chalk.gray(`(${r.actual.durationMs}ms)`);
       if (r.passed) {
@@ -113,18 +144,108 @@ export function printReport(summary: RunSummary): void {
     }
   }
 
-  // Resumen
+  // ── Tabla resumen por módulo ───────────────────────────────────────────────
+  if (byModule.size > 1) {
+    console.log('');
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+    console.log(chalk.cyan.bold('  RESUMEN POR MÓDULO'));
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+
+    const COL_MOD = 26;
+    const header =
+      '  ' +
+      chalk.gray('Módulo'.padEnd(COL_MOD)) +
+      chalk.gray('Total'.padStart(6)) +
+      chalk.gray('Pasados'.padStart(9)) +
+      chalk.gray('Fallidos'.padStart(10)) +
+      chalk.gray('Tasa'.padStart(6)) +
+      chalk.gray('Tiempo'.padStart(10));
+    console.log(header);
+    console.log(chalk.gray('  ' + '─'.repeat(64)));
+
+    for (const [mod, modResults] of byModule) {
+      const modPassed = modResults.filter((r) => r.passed).length;
+      const modFailed = modResults.filter((r) => !r.passed).length;
+      const modTotal = modResults.length;
+      const modPct = Math.round((modPassed / modTotal) * 100);
+      const modDur = modResults.reduce((acc, r) => acc + r.actual.durationMs, 0);
+
+      const modLabel = mod.toUpperCase().padEnd(COL_MOD);
+      const totalStr = String(modTotal).padStart(6);
+      const passedStr = String(modPassed).padStart(9);
+      const failedStr = String(modFailed).padStart(10);
+      const pctStr = `${modPct}%`.padStart(6);
+      const durStr = formatDuration(modDur).padStart(10);
+
+      console.log(
+        '  ' +
+        chalk.magenta(modLabel) +
+        chalk.white(totalStr) +
+        chalk.green(passedStr) +
+        (modFailed > 0 ? chalk.red(failedStr) : chalk.gray(failedStr)) +
+        (modFailed > 0 ? chalk.yellow(pctStr) : chalk.green(pctStr)) +
+        chalk.gray(durStr),
+      );
+    }
+  }
+
+  // ── Top 5 más lentos ──────────────────────────────────────────────────────
+  if (results.length >= 3) {
+    const slowest = [...results]
+      .sort((a, b) => b.actual.durationMs - a.actual.durationMs)
+      .slice(0, 5);
+
+    console.log('');
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+    console.log(chalk.cyan.bold('  TOP 5 MÁS LENTOS'));
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+    for (let i = 0; i < slowest.length; i++) {
+      const r = slowest[i];
+      const icon = r.passed ? chalk.green('✔') : chalk.red('✖');
+      const idLabel = r.passed ? chalk.green(r.scenarioId) : chalk.red(r.scenarioId);
+      console.log(
+        `  ${i + 1}. ${icon}  ${idLabel}  ${chalk.gray(`(${r.module})`)}  ${chalk.yellow(formatDuration(r.actual.durationMs))}`,
+      );
+    }
+  }
+
+  // ── Distribución de fallos ────────────────────────────────────────────────
+  if (failed.length > 0) {
+    const statusMap = new Map<string, number>();
+    for (const r of failed) {
+      const key = r.actual.localError
+        ? 'error-local'
+        : `HTTP ${r.actual.httpStatus ?? 'desconocido'}`;
+      statusMap.set(key, (statusMap.get(key) ?? 0) + 1);
+    }
+    const sorted = [...statusMap.entries()].sort((a, b) => b[1] - a[1]);
+
+    console.log('');
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+    console.log(chalk.cyan.bold(`  DISTRIBUCIÓN DE FALLOS — ${failed.length} en total`));
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+    for (const [label, count] of sorted) {
+      const coloredLabel = label === 'error-local'
+        ? chalk.yellow(label.padEnd(20))
+        : chalk.red(label.padEnd(20));
+      console.log(`  ${coloredLabel}  ${chalk.white(String(count))} escenario(s)`);
+    }
+  }
+
+  // ── Resumen global ────────────────────────────────────────────────────────
   console.log('');
-  console.log(chalk.cyan.bold('─'.repeat(60)));
+  console.log(chalk.cyan.bold('═'.repeat(66)));
+  const globalPct = results.length > 0 ? Math.round((passed.length / results.length) * 100) : 0;
   const totalLabel = chalk.white(`Total: ${results.length}`);
   const passedLabel = chalk.green(`Pasados: ${passed.length}`);
   const failedLabel = failed.length > 0
     ? chalk.red.bold(`Fallidos: ${failed.length}`)
     : chalk.green(`Fallidos: 0`);
   const skippedLabel = chalk.yellow(`Omitidos: ${skipped.length}`);
-  const durLabel = chalk.gray(`${summary.durationMs}ms`);
-  console.log(`  ${totalLabel}   ${passedLabel}   ${failedLabel}   ${skippedLabel}   ${durLabel}`);
-  console.log(chalk.cyan.bold('─'.repeat(60)));
+  const durLabel = chalk.gray(formatDuration(summary.durationMs));
+  const globalPctLabel = pctColor(globalPct, failed.length > 0);
+  console.log(`  ${totalLabel}   ${passedLabel}   ${failedLabel}   ${skippedLabel}   ${durLabel}   ${globalPctLabel}`);
+  console.log(chalk.cyan.bold('═'.repeat(66)));
   console.log('');
 }
 
