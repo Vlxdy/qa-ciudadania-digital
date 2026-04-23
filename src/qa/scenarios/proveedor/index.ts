@@ -12,6 +12,11 @@ import { scenario as prov09 } from './prov-09-codigo-reutilizado';
 import { scenario as prov10 } from './prov-10-mobile-happy-path';
 import { scenario as prov11 } from './prov-11-mobile-sin-code-verifier';
 import { scenario as prov12 } from './prov-12-mobile-code-verifier-invalido';
+import { scenario as prov13 } from './prov-13-b2b-post-happy-path';
+import { scenario as prov14 } from './prov-14-b2b-basic-happy-path';
+import { scenario as prov15 } from './prov-15-b2b-client-id-erroneo';
+import { scenario as prov16 } from './prov-16-b2b-client-secret-erroneo';
+import { scenario as prov17 } from './prov-17-b2b-grant-type-invalido';
 
 export const proveedorScenarios: Scenario[] = [
   prov00,
@@ -27,4 +32,9 @@ export const proveedorScenarios: Scenario[] = [
   prov10,
   prov11,
   prov12,
+  prov13,
+  prov14,
+  prov15,
+  prov16,
+  prov17,
 ];

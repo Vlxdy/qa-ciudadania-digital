@@ -75,6 +75,42 @@ export function buildTokenPayload(overrides: {
 }
 
 /**
+ * Construye el payload para el flujo Client Credentials (B2B).
+ * Reutiliza OIDC_CLIENT_ID y OIDC_CLIENT_SECRET del store existente.
+ * No requiere redirect_uri ni authorization_code.
+ *
+ * @param authMethod 'post' — client_id+secret en el body (primera forma)
+ *                   'basic' — Authorization: Basic header (segunda forma)
+ */
+export function buildB2bPayload(overrides: {
+  clientId?: string;
+  clientSecret?: string;
+  grantType?: string;
+  authMethod?: 'post' | 'basic';
+}): { payload: URLSearchParams; headers: Record<string, string> } {
+  const { config } = getProveedorSessionStore();
+  const authMethod = overrides.authMethod ?? 'post';
+  const clientId = overrides.clientId ?? config.clientId;
+  const clientSecret = overrides.clientSecret ?? config.clientSecret;
+  const grantType = overrides.grantType ?? 'client_credentials';
+
+  const payload = new URLSearchParams({ grant_type: grantType });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  if (authMethod === 'basic') {
+    const cred = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    headers['Authorization'] = `Basic ${cred}`;
+  } else {
+    payload.set('client_id', clientId);
+    payload.set('client_secret', clientSecret ?? '');
+  }
+
+  return { payload, headers };
+}
+
+/**
  * Simula la validación de state (lógica local del flujo OAuth).
  * Retorna el error si hay mismatch, null si coinciden.
  */
