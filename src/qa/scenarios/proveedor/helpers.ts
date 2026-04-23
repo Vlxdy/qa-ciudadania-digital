@@ -14,6 +14,11 @@ export function mobileTokenUrl(): string {
   return `${config.issuer}${config.tokenPath}`;
 }
 
+export function meUrl(): string {
+  const { config } = getProveedorSessionStore();
+  return `${config.issuer}/me`;
+}
+
 /**
  * Construye el payload para el token endpoint.
  * Permite sobreescribir cualquier campo para simular escenarios negativos.

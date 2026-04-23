@@ -17,6 +17,9 @@ import { scenario as prov14 } from './prov-14-b2b-basic-happy-path';
 import { scenario as prov15 } from './prov-15-b2b-client-id-erroneo';
 import { scenario as prov16 } from './prov-16-b2b-client-secret-erroneo';
 import { scenario as prov17 } from './prov-17-b2b-grant-type-invalido';
+import { scenario as prov18 } from './prov-18-me-happy-path';
+import { scenario as prov19 } from './prov-19-me-sin-token';
+import { scenario as prov20 } from './prov-20-me-token-invalido';
 
 export const proveedorScenarios: Scenario[] = [
   prov00,
@@ -37,4 +40,7 @@ export const proveedorScenarios: Scenario[] = [
   prov15,
   prov16,
   prov17,
+  prov18,
+  prov19,
+  prov20,
 ];
