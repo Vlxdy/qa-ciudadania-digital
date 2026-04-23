@@ -19,6 +19,44 @@ export function meUrl(): string {
   return `${config.issuer}/me`;
 }
 
+export function introspectionUrl(): string {
+  const { config } = getProveedorSessionStore();
+  return `${config.issuer}/token/introspection`;
+}
+
+/**
+ * Construye el payload para el endpoint /token/introspection.
+ * Soporta Basic (Authorization header) y post (client_id + client_secret en body).
+ */
+export function buildIntrospectionPayload(
+  token: string,
+  overrides: {
+    clientId?: string;
+    clientSecret?: string;
+    authMethod?: 'post' | 'basic';
+  } = {},
+): { payload: URLSearchParams; headers: Record<string, string> } {
+  const { config } = getProveedorSessionStore();
+  const authMethod = overrides.authMethod ?? (config.authMethod === 'basic' ? 'basic' : 'post');
+  const clientId = overrides.clientId ?? config.clientId;
+  const clientSecret = overrides.clientSecret ?? config.clientSecret;
+
+  const payload = new URLSearchParams({ token });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  if (authMethod === 'basic') {
+    const cred = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    headers['Authorization'] = `Basic ${cred}`;
+  } else {
+    payload.set('client_id', clientId);
+    payload.set('client_secret', clientSecret ?? '');
+  }
+
+  return { payload, headers };
+}
+
 /**
  * Construye el payload para el token endpoint.
  * Permite sobreescribir cualquier campo para simular escenarios negativos.
