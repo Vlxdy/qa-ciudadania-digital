@@ -450,64 +450,226 @@ export function loadPreviousReport(): RunSummary | null {
   }
 }
 
+function formatTimeSince(isoDate: string): string {
+  const ms = Date.now() - new Date(isoDate).getTime();
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return 'hace menos de 1 min';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  const remMin = min % 60;
+  if (h < 24) return remMin > 0 ? `hace ${h}h ${remMin}min` : `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} día(s)`;
+}
+
+function errorTypeLabel(r: ScenarioResult): string {
+  if (r.actual.localError) return 'error local';
+  return `HTTP ${r.actual.httpStatus ?? '?'}`;
+}
+
+function errorTypeChanged(curr: ScenarioResult, prev: ScenarioResult): boolean {
+  if (curr.actual.httpStatus !== prev.actual.httpStatus) return true;
+  const currLocal = !!curr.actual.localError;
+  const prevLocal = !!prev.actual.localError;
+  return currLocal !== prevLocal;
+}
+
 export function printDiffReport(current: RunSummary, previous: RunSummary | null): void {
   console.log('');
   console.log(chalk.cyan.bold('─'.repeat(66)));
-  console.log(chalk.cyan.bold('  COMPARACIÓN CON RUN ANTERIOR'));
-  console.log(chalk.cyan.bold('─'.repeat(66)));
 
   if (!previous) {
+    console.log(chalk.cyan.bold('  COMPARACIÓN CON RUN ANTERIOR'));
+    console.log(chalk.cyan.bold('─'.repeat(66)));
     console.log(chalk.gray('  Sin historial previo — usa --save para acumular historial.'));
     console.log('');
     return;
   }
 
+  const timeSince = formatTimeSince(previous.startedAt);
+  console.log(
+    chalk.cyan.bold('  COMPARACIÓN CON RUN ANTERIOR') + chalk.gray(`  (${timeSince})`),
+  );
+  console.log(chalk.cyan.bold('─'.repeat(66)));
+
   const prevById = new Map(previous.results.map((r) => [r.scenarioId, r]));
 
+  // ── Tendencia general ──────────────────────────────────────────────────────
+  const prevTotal = previous.results.length;
+  const prevPassed = previous.results.filter((r) => r.passed).length;
+  const currTotal = current.results.length;
+  const currPassed = current.results.filter((r) => r.passed).length;
+
+  if (prevTotal > 0 && currTotal > 0) {
+    const prevPct = Math.round((prevPassed / prevTotal) * 100);
+    const currPct = Math.round((currPassed / currTotal) * 100);
+    const delta = currPct - prevPct;
+    const deltaPass = currPassed - prevPassed;
+
+    const pctNow = delta > 0 ? chalk.green(`${currPct}%`) : delta < 0 ? chalk.red(`${currPct}%`) : chalk.white(`${currPct}%`);
+    const trendArrow = delta > 0 ? chalk.green('↑') : delta < 0 ? chalk.red('↓') : chalk.gray('→');
+    const trendPp = delta > 0 ? chalk.green(`+${delta}pp`) : delta < 0 ? chalk.red(`${delta}pp`) : chalk.gray('sin cambio');
+    const passCount = deltaPass > 0 ? chalk.green(`+${deltaPass}`) : deltaPass < 0 ? chalk.red(`${deltaPass}`) : chalk.gray('=');
+
+    console.log(
+      `  Tendencia  ${chalk.white(`${prevPct}%`)} → ${pctNow}` +
+      `  ${trendArrow} ${trendPp}` +
+      `  ${chalk.gray(`(pasados: ${prevPassed} → ${currPassed}  ${passCount})`)}`,
+    );
+  }
+
+  // ── Delta por módulo ───────────────────────────────────────────────────────
+  const byModule = new Map<string, ScenarioResult[]>();
+  for (const r of current.results) {
+    if (!byModule.has(r.module)) byModule.set(r.module, []);
+    byModule.get(r.module)!.push(r);
+  }
+
+  console.log('');
+  console.log(chalk.white.bold('  DELTA POR MÓDULO'));
+  const COL_MOD = 26;
+
+  for (const [mod, modResults] of byModule) {
+    const currFailed = modResults.filter((r) => !r.passed).length;
+    const prevFailed = modResults.filter((r) => {
+      const p = prevById.get(r.scenarioId);
+      return p !== undefined && !p.passed;
+    }).length;
+    const delta = currFailed - prevFailed;
+
+    let arrow: string;
+    let deltaLabel: string;
+    if (delta < 0) {
+      arrow = chalk.green('↑');
+      deltaLabel = chalk.green(`−${Math.abs(delta)} fallo(s)`);
+    } else if (delta > 0) {
+      arrow = chalk.red('↓');
+      deltaLabel = chalk.red(`+${delta} fallo(s)`);
+    } else {
+      arrow = chalk.gray('→');
+      deltaLabel = chalk.gray('sin cambio');
+    }
+
+    console.log(
+      `    ${chalk.magenta(mod.toUpperCase().padEnd(COL_MOD))}` +
+      `  ${chalk.gray(`${prevFailed} → ${currFailed} fallos`).padEnd(22)}` +
+      `  ${arrow}  ${deltaLabel}`,
+    );
+  }
+
+  // ── Clasificación de escenarios ────────────────────────────────────────────
   const newlyFailing = current.results.filter((r) => {
-    const prev = prevById.get(r.scenarioId);
-    return !r.passed && prev?.passed === true;
+    const p = prevById.get(r.scenarioId);
+    return !r.passed && p?.passed === true;
   });
 
   const nowPassing = current.results.filter((r) => {
-    const prev = prevById.get(r.scenarioId);
-    return r.passed && prev?.passed === false;
+    const p = prevById.get(r.scenarioId);
+    return r.passed && p?.passed === false;
   });
 
   const stillFailing = current.results.filter((r) => {
-    const prev = prevById.get(r.scenarioId);
-    return !r.passed && prev !== undefined && prev.passed === false;
+    const p = prevById.get(r.scenarioId);
+    return !r.passed && p !== undefined && !p.passed;
   });
+
+  const stillFailingDiff = stillFailing.filter((r) => errorTypeChanged(r, prevById.get(r.scenarioId)!));
+  const stillFailingSame = stillFailing.filter((r) => !errorTypeChanged(r, prevById.get(r.scenarioId)!));
 
   const newScenarios = current.results.filter((r) => !prevById.has(r.scenarioId));
   const newFailed = newScenarios.filter((r) => !r.passed).length;
 
-  if (newlyFailing.length === 0 && nowPassing.length === 0 && newScenarios.length === 0) {
-    console.log(chalk.green('  Sin cambios respecto al run anterior.'));
+  // Escenarios significativamente más lentos (≥2x y ≥300ms de diferencia absoluta)
+  const slowerScenarios = current.results
+    .flatMap((r) => {
+      const p = prevById.get(r.scenarioId);
+      if (!p || p.actual.durationMs < 50) return [];
+      const ratio = r.actual.durationMs / p.actual.durationMs;
+      if (ratio < 2 || r.actual.durationMs - p.actual.durationMs < 300) return [];
+      return [{ r, prev: p, ratio }];
+    })
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 3);
+
+  const hasAnyScenarioChange =
+    newlyFailing.length > 0 ||
+    nowPassing.length > 0 ||
+    stillFailingDiff.length > 0 ||
+    slowerScenarios.length > 0 ||
+    newScenarios.length > 0;
+
+  if (!hasAnyScenarioChange && stillFailingSame.length === 0) {
+    console.log('');
+    console.log(chalk.green('  Sin cambios de estado respecto al run anterior.'));
     console.log('');
     return;
   }
 
+  // ── Nuevos en fallar ───────────────────────────────────────────────────────
   if (newlyFailing.length > 0) {
+    console.log('');
     console.log(`  ${chalk.red.bold(`⚠  ${newlyFailing.length} nuevo(s) en fallar:`)}`);
     for (const r of newlyFailing) {
-      console.log(`    ${chalk.red('✖')}  ${chalk.red(r.scenarioId)}  ${chalk.gray(`(${r.module})`)}`);
+      console.log(
+        `    ${chalk.red('✖')}  ${chalk.red(r.scenarioId.padEnd(18))}` +
+        `  ${chalk.gray(`(${r.module})`).padEnd(22)}` +
+        `  ${chalk.gray(errorTypeLabel(r))}`,
+      );
     }
   }
 
+  // ── Ahora pasan ────────────────────────────────────────────────────────────
   if (nowPassing.length > 0) {
+    console.log('');
     console.log(`  ${chalk.green.bold(`✔  ${nowPassing.length} ahora pasa(n):`)}`);
     for (const r of nowPassing) {
-      console.log(`    ${chalk.green('✔')}  ${chalk.green(r.scenarioId)}  ${chalk.gray(`(${r.module})`)}`);
+      const p = prevById.get(r.scenarioId)!;
+      console.log(
+        `    ${chalk.green('✔')}  ${chalk.green(r.scenarioId.padEnd(18))}` +
+        `  ${chalk.gray(`(${r.module})`).padEnd(22)}` +
+        `  ${chalk.gray(`era: ${errorTypeLabel(p)}`)}`,
+      );
     }
   }
 
-  if (stillFailing.length > 0) {
-    console.log(`  ${chalk.yellow(`${stillFailing.length} escenario(s) sigue(n) fallando desde el run anterior.`)}`);
+  // ── Sigue fallando con error diferente ─────────────────────────────────────
+  if (stillFailingDiff.length > 0) {
+    console.log('');
+    console.log(`  ${chalk.yellow.bold(`↺  ${stillFailingDiff.length} sigue(n) fallando con error diferente:`)}`);
+    for (const r of stillFailingDiff) {
+      const p = prevById.get(r.scenarioId)!;
+      console.log(
+        `    ${chalk.yellow('~')}  ${chalk.yellow(r.scenarioId.padEnd(18))}` +
+        `  ${chalk.gray(`(${r.module})`).padEnd(22)}` +
+        `  ${chalk.gray(`${errorTypeLabel(p)} → ${errorTypeLabel(r)}`)}`,
+      );
+    }
   }
 
+  // ── Sigue fallando igual ───────────────────────────────────────────────────
+  if (stillFailingSame.length > 0) {
+    console.log('');
+    console.log(`  ${chalk.gray(`${stillFailingSame.length} sigue(n) fallando igual que antes.`)}`);
+  }
+
+  // ── Más lentos que antes ───────────────────────────────────────────────────
+  if (slowerScenarios.length > 0) {
+    console.log('');
+    console.log(`  ${chalk.yellow.bold(`⚡  ${slowerScenarios.length} escenario(s) significativamente más lento(s):`)}`);
+    for (const { r, prev, ratio } of slowerScenarios) {
+      console.log(
+        `    ${chalk.yellow('⚡')}  ${chalk.white(r.scenarioId.padEnd(18))}` +
+        `  ${chalk.gray(`(${r.module})`).padEnd(22)}` +
+        `  ${chalk.gray(`${prev.actual.durationMs}ms → ${r.actual.durationMs}ms`)}` +
+        `  ${chalk.yellow(`${ratio.toFixed(1)}x`)}`,
+      );
+    }
+  }
+
+  // ── Escenarios nuevos ──────────────────────────────────────────────────────
   if (newScenarios.length > 0) {
     const label = newFailed > 0 ? `${newFailed} fallaron` : 'todos pasaron';
+    console.log('');
     console.log(`  ${chalk.gray(`${newScenarios.length} escenario(s) nuevo(s) — ${label}.`)}`);
   }
 
