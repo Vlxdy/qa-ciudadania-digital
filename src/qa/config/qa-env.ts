@@ -2,9 +2,25 @@
  * Variables de entorno para QA.
  * A diferencia de src/config/env.ts, NO hace process.exit si faltan vars —
  * simplemente deja el campo vacío y el runner reporta qué escenarios no pueden correr.
+ *
+ * Soporte de ambientes: --env=staging carga .env.staging sobre .env base.
  */
+import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
+
 dotenv.config();
+
+const envFlag = process.argv.find((a) => a.startsWith('--env='));
+if (envFlag) {
+  const envName = envFlag.split('=').slice(1).join('=');
+  const envPath = path.resolve(`.env.${envName}`);
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: true });
+  } else {
+    console.warn(`[qa-env] Advertencia: no se encontró .env.${envName} en ${envPath}`);
+  }
+}
 
 // Persona base del operador QA.
 // Es el fallback para notificador, autoridad, representante delegado y titular QR.

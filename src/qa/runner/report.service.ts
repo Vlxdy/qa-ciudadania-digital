@@ -357,6 +357,163 @@ export function saveReport(summary: RunSummary): string {
   return filePath;
 }
 
+// ─── JUnit XML ────────────────────────────────────────────────────────────────
+
+function xmlEscape(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export function saveJUnit(summary: RunSummary): string {
+  const dir = path.resolve('./output/qa/reports');
+  fs.mkdirSync(dir, { recursive: true });
+
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = path.join(dir, `qa-report-${ts}.xml`);
+
+  const byModule = new Map<string, ScenarioResult[]>();
+  for (const r of summary.results) {
+    if (!byModule.has(r.module)) byModule.set(r.module, []);
+    byModule.get(r.module)!.push(r);
+  }
+
+  const totalTests = summary.results.length + summary.skipped.length;
+  const totalFailed = summary.results.filter((r) => !r.passed).length;
+  const totalTime = (summary.durationMs / 1000).toFixed(3);
+
+  const lines: string[] = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<testsuites name="QA Suite" tests="${totalTests}" failures="${totalFailed}" skipped="${summary.skipped.length}" errors="0" time="${totalTime}" timestamp="${summary.startedAt}">`,
+  ];
+
+  for (const [mod, modResults] of byModule) {
+    const modFailed = modResults.filter((r) => !r.passed).length;
+    const modTime = (modResults.reduce((acc, r) => acc + r.actual.durationMs, 0) / 1000).toFixed(3);
+
+    lines.push(`  <testsuite name="${xmlEscape(mod)}" tests="${modResults.length}" failures="${modFailed}" skipped="0" errors="0" time="${modTime}">`);
+
+    for (const r of modResults) {
+      const caseTime = (r.actual.durationMs / 1000).toFixed(3);
+      const caseName = xmlEscape(`${r.scenarioId} — ${r.scenarioName}`);
+      const classname = xmlEscape(`${r.module}.${r.scenarioId}`);
+
+      if (r.passed) {
+        lines.push(`    <testcase name="${caseName}" classname="${classname}" time="${caseTime}"/>`);
+      } else {
+        const firstFailure = xmlEscape(r.failures[0] ?? 'Falló sin mensaje');
+        const allFailures = xmlEscape(r.failures.join('\n'));
+        lines.push(`    <testcase name="${caseName}" classname="${classname}" time="${caseTime}">`);
+        lines.push(`      <failure message="${firstFailure}">${allFailures}</failure>`);
+        lines.push(`    </testcase>`);
+      }
+    }
+
+    lines.push(`  </testsuite>`);
+  }
+
+  if (summary.skipped.length > 0) {
+    lines.push(`  <testsuite name="skipped" tests="${summary.skipped.length}" failures="0" skipped="${summary.skipped.length}" errors="0" time="0.000">`);
+    for (const s of summary.skipped) {
+      lines.push(`    <testcase name="${xmlEscape(`${s.id} — ${s.name}`)}" classname="skipped">`);
+      lines.push(`      <skipped message="${xmlEscape(s.reason)}"/>`);
+      lines.push(`    </testcase>`);
+    }
+    lines.push(`  </testsuite>`);
+  }
+
+  lines.push('</testsuites>');
+  fs.writeFileSync(filePath, lines.join('\n') + '\n');
+  return filePath;
+}
+
+// ─── Comparación con run anterior ────────────────────────────────────────────
+
+export function loadPreviousReport(): RunSummary | null {
+  const dir = path.resolve('./output/qa/reports');
+  if (!fs.existsSync(dir)) return null;
+
+  const files = fs.readdirSync(dir)
+    .filter((f) => f.startsWith('qa-report-') && f.endsWith('.json'))
+    .sort()
+    .reverse();
+
+  if (files.length === 0) return null;
+
+  try {
+    const content = fs.readFileSync(path.join(dir, files[0]), 'utf-8');
+    return JSON.parse(content) as RunSummary;
+  } catch {
+    return null;
+  }
+}
+
+export function printDiffReport(current: RunSummary, previous: RunSummary | null): void {
+  console.log('');
+  console.log(chalk.cyan.bold('─'.repeat(66)));
+  console.log(chalk.cyan.bold('  COMPARACIÓN CON RUN ANTERIOR'));
+  console.log(chalk.cyan.bold('─'.repeat(66)));
+
+  if (!previous) {
+    console.log(chalk.gray('  Sin historial previo — usa --save para acumular historial.'));
+    console.log('');
+    return;
+  }
+
+  const prevById = new Map(previous.results.map((r) => [r.scenarioId, r]));
+
+  const newlyFailing = current.results.filter((r) => {
+    const prev = prevById.get(r.scenarioId);
+    return !r.passed && prev?.passed === true;
+  });
+
+  const nowPassing = current.results.filter((r) => {
+    const prev = prevById.get(r.scenarioId);
+    return r.passed && prev?.passed === false;
+  });
+
+  const stillFailing = current.results.filter((r) => {
+    const prev = prevById.get(r.scenarioId);
+    return !r.passed && prev !== undefined && prev.passed === false;
+  });
+
+  const newScenarios = current.results.filter((r) => !prevById.has(r.scenarioId));
+  const newFailed = newScenarios.filter((r) => !r.passed).length;
+
+  if (newlyFailing.length === 0 && nowPassing.length === 0 && newScenarios.length === 0) {
+    console.log(chalk.green('  Sin cambios respecto al run anterior.'));
+    console.log('');
+    return;
+  }
+
+  if (newlyFailing.length > 0) {
+    console.log(`  ${chalk.red.bold(`⚠  ${newlyFailing.length} nuevo(s) en fallar:`)}`);
+    for (const r of newlyFailing) {
+      console.log(`    ${chalk.red('✖')}  ${chalk.red(r.scenarioId)}  ${chalk.gray(`(${r.module})`)}`);
+    }
+  }
+
+  if (nowPassing.length > 0) {
+    console.log(`  ${chalk.green.bold(`✔  ${nowPassing.length} ahora pasa(n):`)}`);
+    for (const r of nowPassing) {
+      console.log(`    ${chalk.green('✔')}  ${chalk.green(r.scenarioId)}  ${chalk.gray(`(${r.module})`)}`);
+    }
+  }
+
+  if (stillFailing.length > 0) {
+    console.log(`  ${chalk.yellow(`${stillFailing.length} escenario(s) sigue(n) fallando desde el run anterior.`)}`);
+  }
+
+  if (newScenarios.length > 0) {
+    const label = newFailed > 0 ? `${newFailed} fallaron` : 'todos pasaron';
+    console.log(`  ${chalk.gray(`${newScenarios.length} escenario(s) nuevo(s) — ${label}.`)}`);
+  }
+
+  console.log('');
+}
+
 function shellEscapeSingle(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }

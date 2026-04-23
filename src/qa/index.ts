@@ -19,6 +19,8 @@ import { qrSeguroScenarios } from './scenarios/qr-seguro';
 import { documentosDigitalesScenarios } from './scenarios/documentos-digitales';
 import { runScenarios } from './runner/scenario.runner';
 import {
+  loadPreviousReport,
+  printDiffReport,
   printDryRun,
   printReport,
   printScenarioResultLive,
@@ -27,6 +29,7 @@ import {
   printScenarioStartLive,
   resetLiveProgress,
   saveCurlArtifacts,
+  saveJUnit,
   saveReport,
 } from './runner/report.service';
 import { missingVars } from './config/qa-env';
@@ -45,9 +48,11 @@ const moduleFilter = arg('module');
 const tagFilter = arg('tag');
 const idFilter = arg('id');
 const saveJson = args.includes('--save') || args.includes('--json');
+const saveXml = args.includes('--junit');
 const onlyFixtures = args.includes('--fixtures');
 const dryRun = args.includes('--dry-run');
 const retryCount = Math.max(0, parseInt(arg('retry') ?? '0', 10));
+const envName = arg('env');
 const showHelp = args.includes('--help') || args.includes('-h');
 
 if (showHelp) {
@@ -60,7 +65,9 @@ if (showHelp) {
     --id=<id>           Ejecutar un escenario específico: prov-01, apro-03, noti-07, obl-req-00, etc.
     --dry-run           Listar qué escenarios correrían sin ejecutarlos
     --retry=<n>         Reintentar escenarios fallidos hasta N veces (ej. --retry=2)
-    --save              Guardar reporte JSON en output/qa/reports/
+    --env=<nombre>      Cargar .env.<nombre> sobre .env base (ej. --env=staging)
+    --save              Guardar reporte JSON en output/qa/reports/ (acumula historial)
+    --junit             Guardar reporte JUnit XML en output/qa/reports/ (para CI/CD)
     (Siempre)           Guardar cURL + response en output/qa/curls/run-<fecha>/<modulo>/<id>/
     --fixtures          Solo generar archivos de prueba y salir
     --help              Mostrar esta ayuda
@@ -145,6 +152,7 @@ async function main() {
   if (moduleFilter) logger.info(`Módulo: ${moduleFilter}`);
   if (tagFilter) logger.info(`Tag: ${tagFilter}`);
   if (idFilter) logger.info(`ID: ${idFilter}`);
+  if (envName) logger.info(`Ambiente: ${envName} (.env.${envName})`);
   if (retryCount > 0) logger.info(`Reintentos: ${retryCount} por escenario fallido`);
 
   // Ejecutar
@@ -169,15 +177,28 @@ async function main() {
     { retries: retryCount },
   );
 
+  // Cargar historial ANTES de guardar el run actual
+  const previousReport = loadPreviousReport();
+
   // Reporte en consola
   printReport(summary);
+
+  // Comparación con run anterior
+  printDiffReport(summary, previousReport);
+
   const curlDir = saveCurlArtifacts(summary);
   logger.ok(`CURLs QA guardados en: ${curlDir}`);
 
-  // Reporte JSON opcional
+  // Reporte JSON opcional (acumula historial para comparación futura)
   if (saveJson) {
     const reportPath = saveReport(summary);
-    logger.ok(`Reporte guardado en: ${reportPath}`);
+    logger.ok(`Reporte JSON guardado en: ${reportPath}`);
+  }
+
+  // Reporte JUnit XML para CI/CD
+  if (saveXml) {
+    const junitPath = saveJUnit(summary);
+    logger.ok(`Reporte JUnit XML guardado en: ${junitPath}`);
   }
 
   // Exit code: 1 si hay fallidos
