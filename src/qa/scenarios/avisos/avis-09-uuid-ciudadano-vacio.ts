@@ -31,5 +31,5 @@ export const scenario: Scenario = {
     const httpResult = await tryBuildAndSendAvisos(input);
     return makeResult(META, { ...httpResult, localError }, EXPECTED);
   },
-  skip: true
+
 };

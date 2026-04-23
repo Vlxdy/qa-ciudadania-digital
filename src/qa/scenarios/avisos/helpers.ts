@@ -19,7 +19,7 @@ export async function buildAvisosBody(): Promise<AvisosInput> {
     envios: [
       {
         uuidCiudadano: qaEnv.AVISOS_UUID_CIUDADANO,
-        parametros: [qaEnv.AVISOS_PARAMETRO_1],
+        parametros: qaEnv.AVISOS_PARAMETRO_1 ? [qaEnv.AVISOS_PARAMETRO_1] : undefined,
       },
     ],
   };
@@ -62,6 +62,6 @@ export async function tryBuildAndSendAvisos(input: unknown): Promise<{
 
 // ─── Accesos rápidos ──────────────────────────────────────────────────────────
 
-export const avisosUrl = () => `${qaEnv.AVISOS_URL_BASE}/ciudadanos/avisos`;
+export const avisosUrl = () => `${qaEnv.AVISOS_URL_BASE}/api/ciudadanos/avisos`;
 
 export const defaultToken = () => qaEnv.AVISOS_TOKEN;
