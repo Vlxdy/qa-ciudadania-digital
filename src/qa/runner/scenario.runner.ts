@@ -25,6 +25,15 @@ export interface ScenarioRunHooks {
     total: number;
     reason: string;
   }) => void;
+  onScenarioRetry?: (context: {
+    scenario: Scenario;
+    attempt: number;
+    maxRetries: number;
+  }) => void;
+}
+
+export interface RunOptions {
+  retries?: number;
 }
 
 function applyFilter(scenarios: Scenario[], filter: ScenarioFilter): Scenario[] {
@@ -44,10 +53,12 @@ export async function runScenarios(
   scenarios: Scenario[],
   filter: ScenarioFilter = {},
   hooks: ScenarioRunHooks = {},
+  options: RunOptions = {},
 ): Promise<RunSummary> {
   const filtered = applyFilter(scenarios, filter);
   const startedAt = new Date().toISOString();
   const globalStart = Date.now();
+  const maxRetries = options.retries ?? 0;
 
   const results: ScenarioResult[] = [];
   const skipped: RunSummary['skipped'] = [];
@@ -72,38 +83,45 @@ export async function runScenarios(
       continue;
     }
 
-    try {
-      const result = await scenario.run();
-      results.push(result);
-      hooks.onScenarioResult?.({
-        scenario,
-        result,
-        index: position,
-        total: filtered.length,
-      });
-    } catch (unexpectedErr) {
-      // El run() debería capturar sus propios errores; esto es seguridad extra
-      const result: ScenarioResult = {
-        scenarioId: scenario.id,
-        scenarioName: scenario.name,
-        module: scenario.module,
-        tags: scenario.tags,
-        passed: false,
-        actual: {
-          localError: `Error inesperado en runner: ${unexpectedErr instanceof Error ? unexpectedErr.message : String(unexpectedErr)}`,
-          durationMs: 0,
-        },
-        expected: scenario.run.toString().includes('expected') ? {} as any : { success: true },
-        failures: ['El runner capturó una excepción no manejada'],
-      };
-      results.push(result);
-      hooks.onScenarioResult?.({
-        scenario,
-        result,
-        index: position,
-        total: filtered.length,
-      });
+    let finalResult: ScenarioResult | null = null;
+    let retriesUsed = 0;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        retriesUsed = attempt;
+        hooks.onScenarioRetry?.({ scenario, attempt, maxRetries });
+      }
+
+      try {
+        const result = await scenario.run();
+        finalResult = result;
+        if (result.passed) break;
+      } catch (unexpectedErr) {
+        // El run() debería capturar sus propios errores; esto es seguridad extra
+        finalResult = {
+          scenarioId: scenario.id,
+          scenarioName: scenario.name,
+          module: scenario.module,
+          tags: scenario.tags,
+          passed: false,
+          actual: {
+            localError: `Error inesperado en runner: ${unexpectedErr instanceof Error ? unexpectedErr.message : String(unexpectedErr)}`,
+            durationMs: 0,
+          },
+          expected: { success: true },
+          failures: ['El runner capturó una excepción no manejada'],
+        };
+      }
     }
+
+    finalResult!.retriesUsed = retriesUsed;
+    results.push(finalResult!);
+    hooks.onScenarioResult?.({
+      scenario,
+      result: finalResult!,
+      index: position,
+      total: filtered.length,
+    });
   }
 
   return {

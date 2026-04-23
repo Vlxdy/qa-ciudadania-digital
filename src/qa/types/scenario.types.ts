@@ -54,6 +54,8 @@ export interface ScenarioResult {
   expected: ExpectedOutcome;
   /** Lista legible de lo que no coincidió (vacía si passed=true) */
   failures: string[];
+  /** Cantidad de reintentos usados antes del resultado final (0 = primera ejecución) */
+  retriesUsed?: number;
 }
 
 // ─── Definición de un escenario ───────────────────────────────────────────────

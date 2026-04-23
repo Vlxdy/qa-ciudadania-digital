@@ -44,14 +44,21 @@ export function printScenarioSkippedLive(
   );
 }
 
+export function printScenarioRetryLive(attempt: number, maxRetries: number): void {
+  console.log(
+    `     ${chalk.yellow('↺')} ${chalk.yellow(`reintento ${attempt}/${maxRetries}...`)}`,
+  );
+}
+
 export function printScenarioResultLive(result: ScenarioResult): void {
   const dur = chalk.gray(`(${result.actual.durationMs}ms)`);
+  const retryLabel = result.retriesUsed ? chalk.yellow(` [${result.retriesUsed} reint.]`) : '';
   if (result.passed) {
-    console.log(`     ${chalk.green.bold('✔')} ${chalk.green('OK')} ${dur}`);
+    console.log(`     ${chalk.green.bold('✔')} ${chalk.green('OK')} ${dur}${retryLabel}`);
     return;
   }
 
-  console.log(`     ${chalk.red.bold('✖')} ${chalk.red('FAIL')} ${dur}`);
+  console.log(`     ${chalk.red.bold('✖')} ${chalk.red('FAIL')} ${dur}${retryLabel}`);
   for (const failure of result.failures) {
     console.log(`       ${chalk.red('└─')} ${chalk.red(failure)}`);
   }
@@ -61,6 +68,50 @@ export function printScenarioResultLive(result: ScenarioResult): void {
   if (result.actual.httpStatus) {
     console.log(`       ${chalk.gray('http:')} ${chalk.gray(String(result.actual.httpStatus))}`);
   }
+}
+
+// ─── Dry run ──────────────────────────────────────────────────────────────────
+
+export function printDryRun(scenarios: Scenario[]): void {
+  const byModule = new Map<string, Scenario[]>();
+  for (const s of scenarios) {
+    if (!byModule.has(s.module)) byModule.set(s.module, []);
+    byModule.get(s.module)!.push(s);
+  }
+
+  const uniqueTags = [...new Set(scenarios.flatMap((s) => s.tags))].sort();
+
+  console.log('');
+  console.log(chalk.cyan.bold('═'.repeat(66)));
+  console.log(
+    chalk.cyan.bold(`  DRY RUN`) +
+    chalk.white(` — ${scenarios.length} escenario(s) en ${byModule.size} módulo(s)`) +
+    chalk.gray('  (sin ejecutar)'),
+  );
+  console.log(chalk.cyan.bold('═'.repeat(66)));
+
+  for (const [mod, modScenarios] of byModule) {
+    console.log('');
+    console.log(
+      chalk.magenta.bold(`  ▸ ${mod.toUpperCase()}`) +
+      chalk.gray(` — ${modScenarios.length} escenarios`),
+    );
+    for (const s of modScenarios) {
+      const skipLabel = s.skip ? chalk.yellow(' (skip)') : '';
+      const tags = chalk.gray(`[${s.tags.join(', ')}]`);
+      console.log(`    ${chalk.white(s.id.padEnd(18))}  ${s.name}${skipLabel}  ${tags}`);
+    }
+  }
+
+  console.log('');
+  console.log(chalk.cyan.bold('─'.repeat(66)));
+  console.log(
+    `  ${chalk.white(`Total: ${scenarios.length}`)}` +
+    `   ${chalk.magenta(`Módulos: ${byModule.size}`)}` +
+    `   ${chalk.gray(`Tags: ${uniqueTags.join(', ')}`)}`,
+  );
+  console.log(chalk.cyan.bold('─'.repeat(66)));
+  console.log('');
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -118,10 +169,11 @@ export function printReport(summary: RunSummary): void {
 
     for (const r of modResults) {
       const dur = chalk.gray(`(${r.actual.durationMs}ms)`);
+      const retryLabel = r.retriesUsed ? chalk.yellow(` [${r.retriesUsed} reint.]`) : '';
       if (r.passed) {
-        console.log(`    ${chalk.green.bold('✔')}  ${chalk.green(r.scenarioId)}  ${r.scenarioName} ${dur}`);
+        console.log(`    ${chalk.green.bold('✔')}  ${chalk.green(r.scenarioId)}  ${r.scenarioName} ${dur}${retryLabel}`);
       } else {
-        console.log(`    ${chalk.red.bold('✖')}  ${chalk.red(r.scenarioId)}  ${r.scenarioName} ${dur}`);
+        console.log(`    ${chalk.red.bold('✖')}  ${chalk.red(r.scenarioId)}  ${r.scenarioName} ${dur}${retryLabel}`);
         for (const f of r.failures) {
           console.log(`       ${chalk.red('└─')} ${chalk.red(f)}`);
         }
@@ -185,6 +237,49 @@ export function printReport(summary: RunSummary): void {
         (modFailed > 0 ? chalk.red(failedStr) : chalk.gray(failedStr)) +
         (modFailed > 0 ? chalk.yellow(pctStr) : chalk.green(pctStr)) +
         chalk.gray(durStr),
+      );
+    }
+  }
+
+  // ── Resultados por tag ────────────────────────────────────────────────────
+  const tagMap = new Map<string, { passed: number; total: number }>();
+  for (const r of results) {
+    for (const tag of r.tags) {
+      if (!tagMap.has(tag)) tagMap.set(tag, { passed: 0, total: 0 });
+      const entry = tagMap.get(tag)!;
+      entry.total++;
+      if (r.passed) entry.passed++;
+    }
+  }
+
+  if (tagMap.size > 0) {
+    const sortedTags = [...tagMap.entries()].sort((a, b) => b[1].total - a[1].total);
+    console.log('');
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+    console.log(chalk.cyan.bold('  RESULTADOS POR TAG'));
+    console.log(chalk.cyan.bold('─'.repeat(66)));
+
+    const COL_TAG = 28;
+    console.log(
+      '  ' +
+      chalk.gray('Tag'.padEnd(COL_TAG)) +
+      chalk.gray('Total'.padStart(6)) +
+      chalk.gray('Pasados'.padStart(9)) +
+      chalk.gray('Fallidos'.padStart(10)) +
+      chalk.gray('Tasa'.padStart(6)),
+    );
+    console.log(chalk.gray('  ' + '─'.repeat(56)));
+
+    for (const [tag, stats] of sortedTags) {
+      const tagFailed = stats.total - stats.passed;
+      const tagPct = Math.round((stats.passed / stats.total) * 100);
+      console.log(
+        '  ' +
+        chalk.white(tag.padEnd(COL_TAG)) +
+        chalk.white(String(stats.total).padStart(6)) +
+        chalk.green(String(stats.passed).padStart(9)) +
+        (tagFailed > 0 ? chalk.red(String(tagFailed).padStart(10)) : chalk.gray(String(tagFailed).padStart(10))) +
+        (tagFailed > 0 ? chalk.yellow(`${tagPct}%`.padStart(6)) : chalk.green(`${tagPct}%`.padStart(6))),
       );
     }
   }

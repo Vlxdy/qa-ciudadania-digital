@@ -19,8 +19,10 @@ import { qrSeguroScenarios } from './scenarios/qr-seguro';
 import { documentosDigitalesScenarios } from './scenarios/documentos-digitales';
 import { runScenarios } from './runner/scenario.runner';
 import {
+  printDryRun,
   printReport,
   printScenarioResultLive,
+  printScenarioRetryLive,
   printScenarioSkippedLive,
   printScenarioStartLive,
   resetLiveProgress,
@@ -44,6 +46,8 @@ const tagFilter = arg('tag');
 const idFilter = arg('id');
 const saveJson = args.includes('--save') || args.includes('--json');
 const onlyFixtures = args.includes('--fixtures');
+const dryRun = args.includes('--dry-run');
+const retryCount = Math.max(0, parseInt(arg('retry') ?? '0', 10));
 const showHelp = args.includes('--help') || args.includes('-h');
 
 if (showHelp) {
@@ -54,6 +58,8 @@ if (showHelp) {
     --module=<nombre>   Filtrar por módulo: proveedor | aprobador | notificador | avisos | qr-seguro | documentos-digitales
     --tag=<tag>         Filtrar por tag: happy | negative | auth | obligatorio-legal | obligatorio-requerimiento | ...
     --id=<id>           Ejecutar un escenario específico: prov-01, apro-03, noti-07, obl-req-00, etc.
+    --dry-run           Listar qué escenarios correrían sin ejecutarlos
+    --retry=<n>         Reintentar escenarios fallidos hasta N veces (ej. --retry=2)
     --save              Guardar reporte JSON en output/qa/reports/
     (Siempre)           Guardar cURL + response en output/qa/curls/run-<fecha>/<modulo>/<id>/
     --fixtures          Solo generar archivos de prueba y salir
@@ -104,9 +110,6 @@ async function main() {
     }
   }
 
-  // Asegurarse de que los fixtures existan
-  generateFixtures();
-
   // Agregar todos los escenarios
   const allScenarios: Scenario[] = [
     ...proveedorScenarios,
@@ -117,13 +120,24 @@ async function main() {
     ...documentosDigitalesScenarios,
   ];
 
-  // Banner
-  const total = allScenarios.filter((s) => {
+  const filterFn = (s: Scenario) => {
     if (moduleFilter && s.module !== moduleFilter) return false;
     if (tagFilter && !s.tags.includes(tagFilter)) return false;
     if (idFilter && s.id !== idFilter) return false;
     return true;
-  }).length;
+  };
+
+  // Dry run: listar escenarios y salir sin ejecutar
+  if (dryRun) {
+    printDryRun(allScenarios.filter(filterFn));
+    process.exit(0);
+  }
+
+  // Asegurarse de que los fixtures existan
+  generateFixtures();
+
+  // Banner
+  const total = allScenarios.filter(filterFn).length;
 
   console.log('');
   logger.step(1, 1, `QA Runner — ${total} escenario(s) a ejecutar`);
@@ -131,24 +145,29 @@ async function main() {
   if (moduleFilter) logger.info(`Módulo: ${moduleFilter}`);
   if (tagFilter) logger.info(`Tag: ${tagFilter}`);
   if (idFilter) logger.info(`ID: ${idFilter}`);
+  if (retryCount > 0) logger.info(`Reintentos: ${retryCount} por escenario fallido`);
 
   // Ejecutar
   resetLiveProgress();
-  const summary = await runScenarios(allScenarios, {
-    module: moduleFilter,
-    tag: tagFilter,
-    id: idFilter,
-  }, {
-    onScenarioStart: ({ scenario, index, total }) => {
-      printScenarioStartLive(scenario, index, total);
+  const summary = await runScenarios(
+    allScenarios,
+    { module: moduleFilter, tag: tagFilter, id: idFilter },
+    {
+      onScenarioStart: ({ scenario, index, total }) => {
+        printScenarioStartLive(scenario, index, total);
+      },
+      onScenarioResult: ({ result }) => {
+        printScenarioResultLive(result);
+      },
+      onScenarioSkipped: ({ scenario, reason }) => {
+        printScenarioSkippedLive(scenario, reason);
+      },
+      onScenarioRetry: ({ attempt, maxRetries }) => {
+        printScenarioRetryLive(attempt, maxRetries);
+      },
     },
-    onScenarioResult: ({ result }) => {
-      printScenarioResultLive(result);
-    },
-    onScenarioSkipped: ({ scenario, reason }) => {
-      printScenarioSkippedLive(scenario, reason);
-    },
-  });
+    { retries: retryCount },
+  );
 
   // Reporte en consola
   printReport(summary);
