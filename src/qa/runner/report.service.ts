@@ -55,18 +55,31 @@ export function printScenarioResultLive(result: ScenarioResult): void {
   const retryLabel = result.retriesUsed ? chalk.yellow(` [${result.retriesUsed} reint.]`) : '';
   if (result.passed) {
     console.log(`     ${chalk.green.bold('✔')} ${chalk.green('OK')} ${dur}${retryLabel}`);
-    return;
+  } else {
+    console.log(`     ${chalk.red.bold('✖')} ${chalk.red('FAIL')} ${dur}${retryLabel}`);
+    for (const failure of result.failures) {
+      console.log(`       ${chalk.red('└─')} ${chalk.red(failure)}`);
+    }
+    if (result.actual.localError) {
+      console.log(`       ${chalk.gray('error:')} ${chalk.gray(result.actual.localError.slice(0, 120))}`);
+    }
+    if (result.actual.httpStatus) {
+      console.log(`       ${chalk.gray('http:')} ${chalk.gray(String(result.actual.httpStatus))}`);
+    }
   }
 
-  console.log(`     ${chalk.red.bold('✖')} ${chalk.red('FAIL')} ${dur}${retryLabel}`);
-  for (const failure of result.failures) {
-    console.log(`       ${chalk.red('└─')} ${chalk.red(failure)}`);
-  }
-  if (result.actual.localError) {
-    console.log(`       ${chalk.gray('error:')} ${chalk.gray(result.actual.localError.slice(0, 120))}`);
-  }
-  if (result.actual.httpStatus) {
-    console.log(`       ${chalk.gray('http:')} ${chalk.gray(String(result.actual.httpStatus))}`);
+  const wh = result.actual.webhookResult;
+  if (wh) {
+    const whIcon = wh.received ? chalk.green('✔') : chalk.red('✖');
+    const whLabel = wh.received
+      ? chalk.green('recibido')
+      : chalk.red(`sin respuesta (${formatDuration(wh.timeoutMs)})`);
+    const whBody = wh.received && wh.body
+      ? chalk.gray('  ' + JSON.stringify(wh.body).slice(0, 80))
+      : '';
+    console.log(
+      `       ${chalk.blue.bold('↳ webhook')} ${chalk.blue(wh.method)} ${chalk.cyan(wh.path)}  ${whIcon} ${whLabel}${whBody}`,
+    );
   }
 }
 
@@ -183,6 +196,20 @@ export function printReport(summary: RunSummary): void {
         if (r.actual.httpStatus) {
           console.log(`       ${chalk.gray('http:')} ${chalk.gray(String(r.actual.httpStatus))}`);
         }
+      }
+
+      const wh = r.actual.webhookResult;
+      if (wh) {
+        const whIcon = wh.received ? chalk.green('✔') : chalk.red('✖');
+        const whLabel = wh.received
+          ? chalk.green('recibido')
+          : chalk.red(`sin respuesta (${formatDuration(wh.timeoutMs)})`);
+        const whBody = wh.received && wh.body
+          ? chalk.gray('  ' + JSON.stringify(wh.body).slice(0, 80))
+          : '';
+        console.log(
+          `       ${chalk.blue.bold('↳ webhook')} ${chalk.blue(wh.method)} ${chalk.cyan(wh.path)}  ${whIcon} ${whLabel}${whBody}`,
+        );
       }
     }
   }

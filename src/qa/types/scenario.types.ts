@@ -21,6 +21,17 @@ export interface ExpectedOutcome {
   validationFields?: string[];
 }
 
+// ─── Resultado del callback webhook ──────────────────────────────────────────
+
+export interface WebhookCallbackResult {
+  received: boolean;
+  path: string;
+  method: string;
+  timeoutMs: number;
+  body?: unknown;
+  receivedAt?: string;
+}
+
 // ─── Resultado real capturado ─────────────────────────────────────────────────
 
 export interface ScenarioActual {
@@ -32,6 +43,8 @@ export interface ScenarioActual {
   durationMs: number;
   /** Datos adicionales de pasos previos (p.ej. respuesta del generador de nonce) */
   context?: Record<string, unknown>;
+  /** Resultado del callback webhook (si el escenario espera uno) */
+  webhookResult?: WebhookCallbackResult;
 }
 
 export interface QaRequestTrace {

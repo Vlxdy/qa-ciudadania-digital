@@ -32,9 +32,11 @@ import {
   saveJUnit,
   saveReport,
 } from './runner/report.service';
-import { missingVars } from './config/qa-env';
+import { missingVars, qaEnv } from './config/qa-env';
 import { logger } from '../utils/logger.util';
 import type { Scenario } from './types/scenario.types';
+import { startQaWebhookServer, stopQaWebhookServer } from './webhook/qa-webhook-server';
+import { clearCallbacks } from './webhook/callback-store';
 
 // ─── Parsear args ─────────────────────────────────────────────────────────────
 
@@ -155,6 +157,18 @@ async function main() {
   if (envName) logger.info(`Ambiente: ${envName} (.env.${envName})`);
   if (retryCount > 0) logger.info(`Reintentos: ${retryCount} por escenario fallido`);
 
+  // Levantar webhook interno (recibe callbacks del servidor durante los escenarios)
+  clearCallbacks();
+  if (qaEnv.QA_WEBHOOK_ENABLED) {
+    try {
+      await startQaWebhookServer(qaEnv.QA_WEBHOOK_PORT);
+      logger.info(`QA Webhook: http://localhost:${qaEnv.QA_WEBHOOK_PORT}`);
+    } catch (err) {
+      logger.warn(`No se pudo iniciar el QA Webhook en :${qaEnv.QA_WEBHOOK_PORT} — ${err instanceof Error ? err.message : String(err)}`);
+      logger.warn('Los escenarios con validación webhook serán omitidos o fallarán.', 3);
+    }
+  }
+
   // Ejecutar
   resetLiveProgress();
   const summary = await runScenarios(
@@ -199,6 +213,11 @@ async function main() {
   if (saveXml) {
     const junitPath = saveJUnit(summary);
     logger.ok(`Reporte JUnit XML guardado en: ${junitPath}`);
+  }
+
+  // Cerrar webhook interno
+  if (qaEnv.QA_WEBHOOK_ENABLED) {
+    await stopQaWebhookServer();
   }
 
   // Exit code: 1 si hay fallidos

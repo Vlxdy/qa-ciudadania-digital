@@ -1,6 +1,9 @@
 /**
  * apro-02 — Happy Path Multiple: 2 PDFs válidos.
- * Flujo completo: POST /api/solicitudes/multiples → obtener link → aprobar vía Playwright.
+ * Flujo completo:
+ *   1. POST /api/solicitudes/multiples → obtener link
+ *   2. Playwright navega al link y completa la aprobación
+ *   3. (Opcional) Espera el callback webhook de confirmación
  */
 import type { Scenario, ScenarioResult } from "../../types/scenario.types";
 import { makeResult } from "../../types/scenario.types";
@@ -13,6 +16,8 @@ import {
 } from "./helpers";
 import { QaPlaywrightApprovalService } from "../../services/qa-playwright-approval.service";
 import { ensureAccessToken } from "../proveedor/services/token-provider";
+import { qaEnv } from "../../config/qa-env";
+import { waitForCallback, isQaWebhookRunning, callbackCount } from "../../webhook";
 
 const META = {
   id: "apro-02",
@@ -35,6 +40,7 @@ export const scenario: Scenario = {
     const start = Date.now();
     try {
       const accessToken = await ensureAccessToken();
+      const webhookStartIndex = callbackCount();
 
       const body = buildMultipleBody([fixtures.validPdf, fixtures.validPdf], {
         accessToken,
@@ -52,11 +58,33 @@ export const scenario: Scenario = {
         return makeResult(META, response, EXPECTED);
       }
 
-      // Flujo completo: Playwright navega al link y completa la aprobación
+      // Paso 2: Playwright navega al link y completa la aprobación
       const approvalResult = await QaPlaywrightApprovalService.process(
         response.body,
         accessToken,
       );
+
+      // Paso 3: Esperar el callback webhook de confirmación
+      let webhookResult: import('../../types/scenario.types').WebhookCallbackResult | undefined;
+
+      if (isQaWebhookRunning()) {
+        const entry = await waitForCallback({
+          path: qaEnv.APRO_CALLBACK_PATH,
+          method: 'POST',
+          afterIndex: webhookStartIndex,
+          bodyExpect: { aceptado: true },
+          timeoutMs: qaEnv.APRO_CALLBACK_TIMEOUT_MS,
+        });
+
+        webhookResult = {
+          received: !!entry,
+          path: qaEnv.APRO_CALLBACK_PATH,
+          method: 'POST',
+          timeoutMs: qaEnv.APRO_CALLBACK_TIMEOUT_MS,
+          body: entry?.body,
+          receivedAt: entry?.receivedAt,
+        };
+      }
 
       return makeResult(
         META,
@@ -64,10 +92,11 @@ export const scenario: Scenario = {
           httpStatus: response.httpStatus,
           request: response.request,
           durationMs: Date.now() - start,
-          body: {
-            solicitudResponse: response.body,
-            aprobacion: approvalResult,
-          },
+          body: { solicitudResponse: response.body, aprobacion: approvalResult },
+          webhookResult,
+          ...(webhookResult && !webhookResult.received
+            ? { localError: `No llegó callback en ${qaEnv.APRO_CALLBACK_PATH} dentro de ${qaEnv.APRO_CALLBACK_TIMEOUT_MS}ms` }
+            : {}),
         },
         EXPECTED,
       );

@@ -30,11 +30,21 @@ const operadorNumeroDoc = process.env.QA_OPERADOR_NUMERO_DOC;
 const operadorFechaNac  = process.env.QA_OPERADOR_FECHA_NAC;
 
 export const qaEnv = {
+  // ─── QA Webhook interno ───────────────────────────────────────────────────
+  // Reutiliza WEBHOOK_PORT para no duplicar configuración
+  QA_WEBHOOK_PORT: Number(process.env.WEBHOOK_PORT ?? 4000),
+  QA_WEBHOOK_ENABLED: process.env.QA_WEBHOOK_ENABLED !== 'false',
+
   // ─── Aprobador ────────────────────────────────────────────────────────────
   APROBADOR_URL: process.env.APROBADOR_URL ?? '',
   TOKEN_CLIENTE: process.env.TOKEN_CLIENTE ?? '',
 
   HASH_MODE: (process.env.HASH_MODE ?? 'BUFFER') as 'BUFFER' | 'BASE64',
+
+  // Callback webhook que el servidor aprobador envía tras procesar la solicitud.
+  // Configurar APRO_CALLBACK_PATH con la ruta real que usa el entorno (sin host/puerto).
+  APRO_CALLBACK_PATH:       process.env.APRO_CALLBACK_PATH       ?? '/webhook/aprobador',
+  APRO_CALLBACK_TIMEOUT_MS: Number(process.env.APRO_CALLBACK_TIMEOUT_MS ?? 55_000),
 
   // ─── Notificador — conexión ───────────────────────────────────────────────
   ISSUER_NOTIFICADOR: process.env.ISSUER_NOTIFICADOR ?? '',
