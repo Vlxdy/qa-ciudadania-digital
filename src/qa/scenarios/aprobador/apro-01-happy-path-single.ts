@@ -15,7 +15,7 @@ import { buildSingleBody, singleUrl, defaultToken, fixtures } from './helpers';
 import { QaPlaywrightApprovalService } from '../../services/qa-playwright-approval.service';
 import { ensureAccessToken } from '../proveedor/services/token-provider';
 import { qaEnv } from '../../config/qa-env';
-import { waitForCallback, isQaWebhookRunning, callbackCount } from '../../webhook';
+import { waitForCallback, isQaWebhookRunning, callbackCount, snapshotCallbacks } from '../../webhook';
 
 const META = {
   id: 'apro-01',
@@ -76,6 +76,9 @@ export const scenario: Scenario = {
           timeoutMs: qaEnv.APRO_CALLBACK_TIMEOUT_MS,
           body: entry?.body,
           receivedAt: entry?.receivedAt,
+          all: snapshotCallbacks().slice(webhookStartIndex).map((e) => ({
+            path: e.path, method: e.method, body: e.body, receivedAt: e.receivedAt,
+          })),
         };
       }
 

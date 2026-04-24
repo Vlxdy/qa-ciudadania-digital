@@ -4,7 +4,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildBodyAsync, notificadorUrl, defaultToken, BASE_NOTIFICACION } from './helpers';
+import { buildBodyAsync, notificadorUrl, defaultToken, BASE_NOTIFICACION, callbackCount, captureNotiWebhook } from './helpers';
 import type { NotificacionInput } from '../../../schemas/notification.schema';
 
 const META = {
@@ -25,6 +25,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
+      const webhookStartIndex = callbackCount();
       const { datosAdicionalesEntidad: _dae, entidadNotificadora: _ent, ...notificacionSinOpcionales } =
         BASE_NOTIFICACION.notificacion;
       const input: NotificacionInput = { notificacion: notificacionSinOpcionales };
@@ -34,7 +35,8 @@ export const scenario: Scenario = {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
       });
-      return makeResult(META, response, EXPECTED);
+      const webhookResult = await captureNotiWebhook(webhookStartIndex);
+      return makeResult(META, { ...response, durationMs: Date.now() - start, webhookResult }, EXPECTED);
     } catch (err) {
       return makeResult(META, {
         localError: err instanceof Error ? err.message : String(err),

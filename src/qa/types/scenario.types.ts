@@ -23,13 +23,24 @@ export interface ExpectedOutcome {
 
 // ─── Resultado del callback webhook ──────────────────────────────────────────
 
+/** Entrada individual de callback recibida durante un escenario */
+export interface WebhookCallbackEntry {
+  path: string;
+  method: string;
+  body: unknown;
+  receivedAt: string;
+}
+
 export interface WebhookCallbackResult {
   received: boolean;
   path: string;
   method: string;
   timeoutMs: number;
+  /** Body del callback que coincidió con el filtro (el primero válido) */
   body?: unknown;
   receivedAt?: string;
+  /** Todos los callbacks recibidos durante este escenario (para el artefacto response.json) */
+  all?: WebhookCallbackEntry[];
 }
 
 // ─── Resultado real capturado ─────────────────────────────────────────────────

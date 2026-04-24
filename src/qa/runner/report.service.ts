@@ -738,6 +738,9 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
       response: { localError: result.actual.localError, durationMs: result.actual.durationMs },
       ...(result.actual.context ? { context: result.actual.context } : {}),
       ...(loginSession ? { loginSession } : {}),
+      ...(result.actual.webhookResult?.all?.length
+        ? { webhookCallbacks: result.actual.webhookResult.all }
+        : {}),
     };
     fs.writeFileSync(path.join(scenarioDir, 'response.json'), `${JSON.stringify(responseSnapshot, null, 2)}\n`);
     return;
@@ -816,6 +819,9 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
     },
     ...(result.actual.context ? { context: result.actual.context } : {}),
     ...(loginSession ? { loginSession } : {}),
+    ...(result.actual.webhookResult?.all?.length
+      ? { webhookCallbacks: result.actual.webhookResult.all }
+      : {}),
   };
   fs.writeFileSync(
     path.join(scenarioDir, 'response.json'),

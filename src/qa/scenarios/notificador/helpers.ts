@@ -11,6 +11,10 @@ import { qaEnv } from '../../config/qa-env';
 import { fixturesPaths } from '../../fixtures/paths';
 import { QaFileHashService } from './qa-file-hash.service';
 import { qaPost } from '../../http/qa-http';
+import type { WebhookCallbackResult } from '../../types/scenario.types';
+import { callbackCount, waitForCallback, isQaWebhookRunning, snapshotCallbacks } from '../../webhook';
+
+export { callbackCount };
 
 // ─── Placeholder hash para URLs que no tienen hash real en env ────────────────
 // El servidor validará el hash contra el archivo real; usar solo cuando la URL
@@ -257,4 +261,88 @@ export async function tryBuildAndSend(input: unknown): Promise<{
   } catch {
     return { durationMs: Date.now() - start };
   }
+}
+
+// ─── Webhook callback helper ──────────────────────────────────────────────────
+
+/**
+ * Parsea una cadena de rutas comma-separated.
+ * Si está vacía usa `[callbackPath, '/file']` como default sensible.
+ */
+function parseWatchPaths(raw: string, callbackPath: string): string[] {
+  if (raw) return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return [callbackPath, '/file'];
+}
+
+/**
+ * Retorna true si `entryPath` coincide con el watchPath dado:
+ * - Coincidencia exacta: /webhook/notificador === /webhook/notificador
+ * - Coincidencia de prefijo con hijos: /file/valid.pdf comienza con /file/
+ */
+function pathMatches(entryPath: string, watchPath: string): boolean {
+  return entryPath === watchPath || entryPath.startsWith(watchPath.endsWith('/') ? watchPath : watchPath + '/');
+}
+
+async function captureWebhook(
+  path: string,
+  timeoutMs: number,
+  afterIndex: number,
+  watchPaths: string[],
+): Promise<WebhookCallbackResult | undefined> {
+  if (!isQaWebhookRunning()) return undefined;
+  const entry = await waitForCallback({
+    path,
+    method: 'POST',
+    afterIndex,
+    // TODO: definir bodyExpect cuando se confirmen las condiciones del servidor
+    timeoutMs,
+  });
+  const all = snapshotCallbacks()
+    .slice(afterIndex)
+    .filter((e) => watchPaths.some((wp) => pathMatches(e.path, wp)))
+    .map((e) => ({
+      path: e.path,
+      method: e.method,
+      body: e.body,
+      receivedAt: e.receivedAt,
+    }));
+  return {
+    received: !!entry,
+    path,
+    method: 'POST',
+    timeoutMs,
+    body: entry?.body,
+    receivedAt: entry?.receivedAt,
+    all,
+  };
+}
+
+/** Captura el callback webhook para notificaciones naturales. */
+export function captureNotiWebhook(afterIndex: number) {
+  return captureWebhook(
+    qaEnv.NOTI_CALLBACK_PATH,
+    qaEnv.NOTI_CALLBACK_TIMEOUT_MS,
+    afterIndex,
+    parseWatchPaths(qaEnv.NOTI_WEBHOOK_WATCH_PATHS, qaEnv.NOTI_CALLBACK_PATH),
+  );
+}
+
+/** Captura el callback webhook para notificaciones de carácter obligatorio legal. */
+export function captureOblLegalWebhook(afterIndex: number) {
+  return captureWebhook(
+    qaEnv.NOTI_OBL_LEGAL_CALLBACK_PATH,
+    qaEnv.NOTI_OBL_LEGAL_CALLBACK_TIMEOUT_MS,
+    afterIndex,
+    parseWatchPaths(qaEnv.NOTI_OBL_LEGAL_WEBHOOK_WATCH_PATHS, qaEnv.NOTI_OBL_LEGAL_CALLBACK_PATH),
+  );
+}
+
+/** Captura el callback webhook para notificaciones de carácter obligatorio requerimiento. */
+export function captureOblReqWebhook(afterIndex: number) {
+  return captureWebhook(
+    qaEnv.NOTI_OBL_REQ_CALLBACK_PATH,
+    qaEnv.NOTI_OBL_REQ_CALLBACK_TIMEOUT_MS,
+    afterIndex,
+    parseWatchPaths(qaEnv.NOTI_OBL_REQ_WEBHOOK_WATCH_PATHS, qaEnv.NOTI_OBL_REQ_CALLBACK_PATH),
+  );
 }

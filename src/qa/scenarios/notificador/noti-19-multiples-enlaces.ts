@@ -4,7 +4,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildBodyAsync, notificadorUrl, defaultToken, BASE_NOTIFICACION } from './helpers';
+import { buildBodyAsync, notificadorUrl, defaultToken, BASE_NOTIFICACION, callbackCount, captureNotiWebhook } from './helpers';
 import type { NotificacionInput } from '../../../schemas/notification.schema';
 import { qaEnv } from '../../config/qa-env';
 
@@ -26,6 +26,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
+      const webhookStartIndex = callbackCount();
       // FIRMA usa el PDF firmado digitalmente; APROBACION usa el enlace principal
       const enlaceAprobacion = BASE_NOTIFICACION.notificacion.enlaces[0];
       const enlaceFirma = {
@@ -50,7 +51,8 @@ export const scenario: Scenario = {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
       });
-      return makeResult(META, response, EXPECTED);
+      const webhookResult = await captureNotiWebhook(webhookStartIndex);
+      return makeResult(META, { ...response, durationMs: Date.now() - start, webhookResult }, EXPECTED);
     } catch (err) {
       return makeResult(META, {
         localError: err instanceof Error ? err.message : String(err),

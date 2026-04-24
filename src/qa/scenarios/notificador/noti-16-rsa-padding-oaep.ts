@@ -5,7 +5,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildValidBodyAsync, notificadorUrl, defaultToken } from './helpers';
+import { buildValidBodyAsync, notificadorUrl, defaultToken, callbackCount, captureNotiWebhook } from './helpers';
 
 const META = {
   id: 'noti-16',
@@ -25,12 +25,14 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
+      const webhookStartIndex = callbackCount();
       const body = await buildValidBodyAsync('OAEP');
       const response = await qaPost(notificadorUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
       });
-      return makeResult(META, response, EXPECTED);
+      const webhookResult = await captureNotiWebhook(webhookStartIndex);
+      return makeResult(META, { ...response, durationMs: Date.now() - start, webhookResult }, EXPECTED);
     } catch (err) {
       return makeResult(META, {
         localError: err instanceof Error ? err.message : String(err),

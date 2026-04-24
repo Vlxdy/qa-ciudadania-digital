@@ -4,7 +4,7 @@
 import type { Scenario, ScenarioResult } from '../../types/scenario.types';
 import { makeResult } from '../../types/scenario.types';
 import { qaPost } from '../../http/qa-http';
-import { buildValidBodyAsync, notificadorUrl, defaultToken } from './helpers';
+import { buildValidBodyAsync, notificadorUrl, defaultToken, callbackCount, captureNotiWebhook } from './helpers';
 import { codigosStore } from './codigos-store';
 
 const META = {
@@ -26,6 +26,7 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
+      const webhookStartIndex = callbackCount();
       // buildValidBodyAsync descarga los PDFs de las URLs configuradas en NOTI_ENLACE_URL /
       // NOTI_FORMULARIO_URL y calcula sus hashes SHA-256 reales cuando NOTI_ENLACE_HASH /
       // NOTI_FORMULARIO_HASH están vacíos en el .env.
@@ -36,7 +37,8 @@ export const scenario: Scenario = {
       });
       const codigo = (response.body as any)?.datos?.codigoSeguimiento;
       if (codigo) codigosStore.codigoSeguimientoNatural = codigo;
-      return makeResult(META, response, EXPECTED);
+      const webhookResult = await captureNotiWebhook(webhookStartIndex);
+      return makeResult(META, { ...response, durationMs: Date.now() - start, webhookResult }, EXPECTED);
     } catch (err) {
       return makeResult(META, {
         localError: err instanceof Error ? err.message : String(err),

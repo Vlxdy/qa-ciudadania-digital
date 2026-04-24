@@ -6,6 +6,7 @@ import { makeResult } from '../../../types/scenario.types';
 import { qaPost } from '../../../http/qa-http';
 import { buildValidBodyAsync, notificadorOblLegalUrl, oblLegalToken } from './helpers';
 import { codigosStore } from '../codigos-store';
+import { callbackCount, captureOblLegalWebhook } from '../helpers';
 
 const META = {
   id: 'obl-legal-01',
@@ -36,6 +37,7 @@ export const scenario: Scenario = {
         }, EXPECTED);
       }
 
+      const webhookStartIndex = callbackCount();
       const body = await buildValidBodyAsync();
       const response = await qaPost(url, body, {
         Authorization: `Bearer ${token}`,
@@ -43,7 +45,8 @@ export const scenario: Scenario = {
       });
       const codigo = (response.body as any)?.datos?.codigoSeguimiento;
       if (codigo) codigosStore.codigoSeguimientoNatural = codigo;
-      return makeResult(META, response, EXPECTED);
+      const webhookResult = await captureOblLegalWebhook(webhookStartIndex);
+      return makeResult(META, { ...response, durationMs: Date.now() - start, webhookResult }, EXPECTED);
     } catch (err) {
       return makeResult(META, {
         localError: err instanceof Error ? err.message : String(err),
