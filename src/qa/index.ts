@@ -32,7 +32,8 @@ import {
   saveJUnit,
   saveReport,
 } from './runner/report.service';
-import { missingVars, qaEnv } from './config/qa-env';
+import { qaEnv } from './config/qa-env';
+import { validateModulesEnv, type QaModule } from './config/qa-env.schema';
 import { logger } from '../utils/logger.util';
 import type { Scenario } from './types/scenario.types';
 import { startQaWebhookServer, stopQaWebhookServer } from './webhook/qa-webhook-server';
@@ -100,8 +101,8 @@ if (onlyFixtures) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  // Advertencia si faltan vars por módulo
-  const modulos: Array<'proveedor' | 'aprobador' | 'notificador' | 'avisos' | 'qr-seguro' | 'documentos-digitales'> = [
+  // Validar variables de entorno por módulo antes de ejecutar
+  const allModules: QaModule[] = [
     'proveedor',
     'aprobador',
     'notificador',
@@ -109,14 +110,22 @@ async function main() {
     'qr-seguro',
     'documentos-digitales',
   ];
+  const modulesToValidate = moduleFilter
+    ? allModules.filter((m) => m === moduleFilter)
+    : allModules;
 
-  for (const mod of modulos) {
-    if (moduleFilter && moduleFilter !== mod) continue;
-    const missing = missingVars(mod);
-    if (missing.length > 0) {
-      logger.warn(`Módulo ${mod.toUpperCase()}: faltan vars de entorno → ${missing.join(', ')}`);
-      logger.warn('Los escenarios HTTP de ese módulo probablemente fallen con error de red.', 3);
+  const envValidation = validateModulesEnv(modulesToValidate, qaEnv as unknown as Record<string, unknown>);
+  const invalidModules = envValidation.filter((r) => !r.valid);
+
+  if (invalidModules.length > 0) {
+    console.log('');
+    for (const result of invalidModules) {
+      logger.warn(`${result.module.toUpperCase()}: ${result.issues.length} variable(s) inválida(s) o faltante(s):`);
+      for (const issue of result.issues) {
+        logger.warn(`  • ${issue.field}: ${issue.message}`, 3);
+      }
     }
+    console.log('');
   }
 
   // Agregar todos los escenarios

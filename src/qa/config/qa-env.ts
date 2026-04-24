@@ -1,13 +1,21 @@
 /**
- * Variables de entorno para QA.
- * A diferencia de src/config/env.ts, NO hace process.exit si faltan vars —
- * simplemente deja el campo vacío y el runner reporta qué escenarios no pueden correr.
+ * Variables de entorno para QA, parseadas y validadas con Zod.
+ *
+ * Todos los campos de `qaEnv` tienen tipos precisos (sin string | undefined):
+ *  - Campos requeridos con default: z.string().default('') → siempre string
+ *  - Campos enum con fallback:      z.enum([...]).catch('DEFAULT') → nunca undefined
+ *  - Campos numéricos:              z.coerce.number().catch(N) → siempre number
+ *  - Campos booleanos:              derivados de string vía transform
+ *
+ * La validación semántica (campos vacíos requeridos para cada módulo) vive en
+ * qa-env.schema.ts y se ejecuta al inicio de `npm run qa`.
  *
  * Soporte de ambientes: --env=staging carga .env.staging sobre .env base.
  */
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { z } from 'zod';
 
 dotenv.config();
 
@@ -22,196 +30,286 @@ if (envFlag) {
   }
 }
 
-// Persona base del operador QA.
-// Es el fallback para notificador, autoridad, representante delegado y titular QR.
-// Sobreescribe cada campo individualmente en .env si un escenario requiere una persona distinta.
-const operadorTipoDoc = (process.env.QA_OPERADOR_TIPO_DOC ?? 'CI') as 'CI' | 'CIE';
-const operadorNumeroDoc = process.env.QA_OPERADOR_NUMERO_DOC;
-const operadorFechaNac = process.env.QA_OPERADOR_FECHA_NAC;
+// ─── Schema de parseo de process.env ─────────────────────────────────────────
+// z.string().default('') → acepta undefined y lo convierte en '', nunca falla.
+// z.enum([...]).catch(X) → acepta undefined o valores inválidos y los reemplaza por X.
+// z.coerce.number().catch(N) → convierte string → number; si falla, usa N.
 
-export const qaEnv = {
-  // ─── QA Webhook interno ───────────────────────────────────────────────────
-  // Reutiliza WEBHOOK_PORT para no duplicar configuración
-  QA_WEBHOOK_PORT: Number(process.env.WEBHOOK_PORT ?? 4000),
-  QA_WEBHOOK_ENABLED: process.env.QA_WEBHOOK_ENABLED !== 'false',
+const str = (d = '') => z.string().default(d);
+const num = (d: number) => z.coerce.number().catch(d);
 
-  // ─── Aprobador ────────────────────────────────────────────────────────────
-  APROBADOR_URL: process.env.APROBADOR_URL ?? '',
-  TOKEN_CLIENTE: process.env.TOKEN_CLIENTE ?? '',
+function tipoDoc() {
+  return z.enum(['CI', 'CIE'] as const).catch('CI' as const);
+}
+function tipoDocOpt() {
+  return z.enum(['CI', 'CIE'] as const).optional();
+}
 
-  HASH_MODE: (process.env.HASH_MODE ?? 'BUFFER') as 'BUFFER' | 'BASE64',
+const rawSchema = z.object({
+  // ─── QA Webhook ─────────────────────────────────────────────────────────
+  WEBHOOK_PORT:       num(4000),
+  QA_WEBHOOK_ENABLED: str('true'),
 
-  // Callback webhook que el servidor aprobador envía tras procesar la solicitud.
-  // Configurar APRO_CALLBACK_PATH con la ruta real que usa el entorno (sin host/puerto).
-  APRO_CALLBACK_PATH: process.env.APRO_CALLBACK_PATH ?? '/webhook/aprobador',
-  APRO_CALLBACK_TIMEOUT_MS: Number(process.env.APRO_CALLBACK_TIMEOUT_MS ?? 55_000),
+  // ─── Operador QA base ────────────────────────────────────────────────────
+  QA_OPERADOR_TIPO_DOC:   tipoDoc(),
+  QA_OPERADOR_NUMERO_DOC: str(),
+  QA_OPERADOR_FECHA_NAC:  str(),
 
-  // Callback webhook que el servidor notificador envía tras procesar la solicitud.
-  NOTI_CALLBACK_PATH: process.env.NOTI_CALLBACK_PATH ?? '/webhook/notificador',
-  NOTI_CALLBACK_TIMEOUT_MS: Number(process.env.NOTI_CALLBACK_TIMEOUT_MS ?? 55_000),
+  // ─── Aprobador ───────────────────────────────────────────────────────────
+  APROBADOR_URL: str(),
+  TOKEN_CLIENTE:  str(),
+  HASH_MODE: z.enum(['BUFFER', 'BASE64'] as const).catch('BUFFER' as const),
+  APRO_CALLBACK_PATH:       str('/webhook/aprobador'),
+  APRO_CALLBACK_TIMEOUT_MS: num(55_000),
 
-  // Callback webhook para notificaciones de carácter obligatorio legal.
-  NOTI_OBL_LEGAL_CALLBACK_PATH: process.env.NOTI_OBL_LEGAL_CALLBACK_PATH ?? '/webhook/notificador-obligatorio',
-  NOTI_OBL_LEGAL_CALLBACK_TIMEOUT_MS: Number(process.env.NOTI_OBL_LEGAL_CALLBACK_TIMEOUT_MS ?? 55_000),
+  // ─── Notificador — callbacks webhook ─────────────────────────────────────
+  NOTI_CALLBACK_PATH:       str('/webhook/notificador'),
+  NOTI_CALLBACK_TIMEOUT_MS: num(55_000),
 
-  // Callback webhook para notificaciones de carácter obligatorio requerimiento.
-  NOTI_OBL_REQ_CALLBACK_PATH: process.env.NOTI_OBL_REQ_CALLBACK_PATH ?? '/webhook/notificador-requerimiento',
-  NOTI_OBL_REQ_CALLBACK_TIMEOUT_MS: Number(process.env.NOTI_OBL_REQ_CALLBACK_TIMEOUT_MS ?? 55_000),
+  NOTI_OBL_LEGAL_CALLBACK_PATH:       str('/webhook/notificador-obligatorio'),
+  NOTI_OBL_LEGAL_CALLBACK_TIMEOUT_MS: num(55_000),
 
-  // Rutas a incluir en webhookCallbacks del response.json — comma-separated, sin importar método.
-  // Vacío → usa el callback path + /file como default.
-  // Ejemplo: /webhook/notificador,/file,/documentos-digitales
-  NOTI_WEBHOOK_WATCH_PATHS: process.env.NOTI_WEBHOOK_WATCH_PATHS ?? '',
-  NOTI_OBL_LEGAL_WEBHOOK_WATCH_PATHS: process.env.NOTI_OBL_LEGAL_WEBHOOK_WATCH_PATHS ?? '',
-  NOTI_OBL_REQ_WEBHOOK_WATCH_PATHS: process.env.NOTI_OBL_REQ_WEBHOOK_WATCH_PATHS ?? '',
+  NOTI_OBL_REQ_CALLBACK_PATH:       str('/webhook/notificador-requerimiento'),
+  NOTI_OBL_REQ_CALLBACK_TIMEOUT_MS: num(55_000),
+
+  NOTI_WEBHOOK_WATCH_PATHS:           str(),
+  NOTI_OBL_LEGAL_WEBHOOK_WATCH_PATHS: str(),
+  NOTI_OBL_REQ_WEBHOOK_WATCH_PATHS:   str(),
 
   // ─── Notificador — conexión ───────────────────────────────────────────────
-  ISSUER_NOTIFICADOR: process.env.ISSUER_NOTIFICADOR ?? '',
-  TOKEN_CONFIGURACION: process.env.TOKEN_CONFIGURACION ?? '',
-  RSA_PUBLIC_KEY_PATH: process.env.RSA_PUBLIC_KEY_PATH ?? './keys/public.pem',
-  RSA_PADDING: (process.env.RSA_PADDING ?? 'PKCS1') as 'PKCS1' | 'OAEP',
+  ISSUER_NOTIFICADOR:  str(),
+  TOKEN_CONFIGURACION: str(),
+  RSA_PUBLIC_KEY_PATH: str('./keys/public.pem'),
+  RSA_PADDING: z.enum(['PKCS1', 'OAEP'] as const).catch('PKCS1' as const),
 
-  // ─── Notificador — datos de la notificación ───────────────────────────────
-  NOTI_TITULO: process.env.NOTI_TITULO,
-  NOTI_DESCRIPCION: process.env.NOTI_DESCRIPCION,
+  // ─── Notificador — contenido de la notificación ───────────────────────────
+  NOTI_TITULO:      str(),
+  NOTI_DESCRIPCION: str(),
 
-  // Ciudadano notificador — fallback a QA_OPERADOR_*
-  NOTI_NOTIFICADOR_TIPO_DOC: (process.env.NOTI_NOTIFICADOR_TIPO_DOC ?? operadorTipoDoc) as 'CI' | 'CIE',
-  NOTI_NOTIFICADOR_NUMERO_DOC: process.env.NOTI_NOTIFICADOR_NUMERO_DOC ?? operadorNumeroDoc,
-  NOTI_NOTIFICADOR_FECHA_NAC: process.env.NOTI_NOTIFICADOR_FECHA_NAC ?? operadorFechaNac,
+  NOTI_NOTIFICADOR_TIPO_DOC:    tipoDocOpt(),
+  NOTI_NOTIFICADOR_NUMERO_DOC:  str().optional(),
+  NOTI_NOTIFICADOR_FECHA_NAC:   str().optional(),
 
-  // Ciudadano autoridad — fallback a QA_OPERADOR_*
-  NOTI_AUTORIDAD_TIPO_DOC: (process.env.NOTI_AUTORIDAD_TIPO_DOC ?? operadorTipoDoc) as 'CI' | 'CIE',
-  NOTI_AUTORIDAD_NUMERO_DOC: process.env.NOTI_AUTORIDAD_NUMERO_DOC ?? operadorNumeroDoc,
-  NOTI_AUTORIDAD_FECHA_NAC: process.env.NOTI_AUTORIDAD_FECHA_NAC ?? operadorFechaNac,
+  NOTI_AUTORIDAD_TIPO_DOC:   tipoDocOpt(),
+  NOTI_AUTORIDAD_NUMERO_DOC: str().optional(),
+  NOTI_AUTORIDAD_FECHA_NAC:  str().optional(),
 
-  // Ciudadano notificado principal
-  NOTI_NOTIFICADO_TIPO_DOC: (process.env.NOTI_NOTIFICADO_TIPO_DOC ?? 'CI') as 'CI' | 'CIE',
-  NOTI_NOTIFICADO_NUMERO_DOC: process.env.NOTI_NOTIFICADO_NUMERO_DOC,
-  NOTI_NOTIFICADO_FECHA_NAC: process.env.NOTI_NOTIFICADO_FECHA_NAC,
+  NOTI_NOTIFICADO_TIPO_DOC:    tipoDoc(),
+  NOTI_NOTIFICADO_NUMERO_DOC:  str(),
+  NOTI_NOTIFICADO_FECHA_NAC:   str(),
 
-  // Ciudadano notificado secundario (para escenario CIE — noti-20)
-  NOTI_NOTIFICADO_CIE_NUMERO_DOC: process.env.NOTI_NOTIFICADO_CIE_NUMERO_DOC,
-  NOTI_NOTIFICADO_CIE_FECHA_NAC: process.env.NOTI_NOTIFICADO_CIE_FECHA_NAC,
+  NOTI_NOTIFICADO_CIE_NUMERO_DOC: str(),
+  NOTI_NOTIFICADO_CIE_FECHA_NAC:  str(),
 
-  // Enlace adjunto principal (tipo APROBACION)
-  NOTI_ENLACE_URL: process.env.NOTI_ENLACE_URL,
-  NOTI_ENLACE_ETIQUETA: process.env.NOTI_ENLACE_ETIQUETA,
-  NOTI_ENLACE_TIPO: process.env.NOTI_ENLACE_TIPO as 'FIRMA' | 'APROBACION' | undefined,
-  // Si está vacío, helpers.ts computará el hash descargando el archivo (o usará placeholder)
-  NOTI_ENLACE_HASH: process.env.NOTI_ENLACE_HASH ?? '',
+  NOTI_ENLACE_URL:      str(),
+  NOTI_ENLACE_ETIQUETA: str(),
+  NOTI_ENLACE_TIPO: z.enum(['FIRMA', 'APROBACION'] as const).catch('APROBACION' as const),
+  NOTI_ENLACE_HASH: str(),
 
-  // Enlace para archivo firmado digitalmente (tipo FIRMA) — noti-19 y similares
-  NOTI_ENLACE_FIRMA_URL: process.env.NOTI_ENLACE_FIRMA_URL,
-  NOTI_ENLACE_FIRMA_ETIQUETA: process.env.NOTI_ENLACE_FIRMA_ETIQUETA,
-  NOTI_ENLACE_FIRMA_HASH: process.env.NOTI_ENLACE_FIRMA_HASH ?? '',
+  NOTI_ENLACE_FIRMA_URL:      str(),
+  NOTI_ENLACE_FIRMA_ETIQUETA: str(),
+  NOTI_ENLACE_FIRMA_HASH:     str(),
 
-  // Formulario de notificación
-  NOTI_FORMULARIO_URL: process.env.NOTI_FORMULARIO_URL,
-  NOTI_FORMULARIO_ETIQUETA: process.env.NOTI_FORMULARIO_ETIQUETA,
-  NOTI_FORMULARIO_TIPO: process.env.NOTI_FORMULARIO_TIPO as 'FIRMA' | 'APROBACION' | undefined,
-  NOTI_FORMULARIO_HASH: process.env.NOTI_FORMULARIO_HASH ?? '',
+  NOTI_FORMULARIO_URL:      str(),
+  NOTI_FORMULARIO_ETIQUETA: str(),
+  NOTI_FORMULARIO_TIPO: z.enum(['FIRMA', 'APROBACION'] as const).catch('FIRMA' as const),
+  NOTI_FORMULARIO_HASH: str(),
 
-  // Entidad notificadora (opcional — omitir para usar la entidad origen)
-  NOTI_ENTIDAD_NOTIFICADORA: process.env.NOTI_ENTIDAD_NOTIFICADORA ?? '',
+  NOTI_ENTIDAD_NOTIFICADORA: str(),
 
   // ─── Delegado de Entidad Pública ─────────────────────────────────────────
-  NOTI_DELEGADO_CODIGO_ENTIDAD: process.env.NOTI_DELEGADO_CODIGO_ENTIDAD,
-  NOTI_DELEGADO_DESCRIPCION: process.env.NOTI_DELEGADO_DESCRIPCION,
+  NOTI_DELEGADO_CODIGO_ENTIDAD: str(),
+  NOTI_DELEGADO_DESCRIPCION:    str(),
 
-  // Representante legal — fallback a QA_OPERADOR_*
-  NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC: (process.env.NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC ?? operadorTipoDoc) as 'CI' | 'CIE',
-  NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: process.env.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? operadorNumeroDoc,
-  NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC: process.env.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC ?? operadorFechaNac,
+  NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC:    tipoDocOpt(),
+  NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC:  str().optional(),
+  NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC:   str().optional(),
 
   // ─── QR-Seguro ───────────────────────────────────────────────────────────
-  QR_SEGURO_URL_BASE: process.env.QR_SEGURO_URL_BASE ?? '',
-  QR_SEGURO_TOKEN: process.env.QR_SEGURO_TOKEN ?? '',
+  QR_SEGURO_URL_BASE: str(),
+  QR_SEGURO_TOKEN:    str(),
 
-  QR_SEGURO_CODIGO_DOCUMENTO: process.env.QR_SEGURO_CODIGO_DOCUMENTO,
-  QR_SEGURO_NOMBRE_DOCUMENTO: process.env.QR_SEGURO_NOMBRE_DOCUMENTO,
-  QR_SEGURO_DESCRIPCION_DOCUMENTO: process.env.QR_SEGURO_DESCRIPCION_DOCUMENTO,
-
-  // Titular del documento — fallback a QA_OPERADOR_*
-  QR_SEGURO_TITULAR_NOMBRE: process.env.QR_SEGURO_TITULAR_NOMBRE,
-  QR_SEGURO_TITULAR_TIPO_DOC: (process.env.QR_SEGURO_TITULAR_TIPO_DOC ?? operadorTipoDoc) as 'CI' | 'CIE',
-  QR_SEGURO_TITULAR_NUMERO_DOC: process.env.QR_SEGURO_TITULAR_NUMERO_DOC ?? operadorNumeroDoc,
-  QR_SEGURO_TITULAR_ROL: process.env.QR_SEGURO_TITULAR_ROL,
+  QR_SEGURO_CODIGO_DOCUMENTO:      str(),
+  QR_SEGURO_NOMBRE_DOCUMENTO:      str(),
+  QR_SEGURO_DESCRIPCION_DOCUMENTO: str(),
+  QR_SEGURO_TITULAR_NOMBRE:        str(),
+  QR_SEGURO_TITULAR_TIPO_DOC:      tipoDocOpt(),
+  QR_SEGURO_TITULAR_NUMERO_DOC:    str().optional(),
+  QR_SEGURO_TITULAR_ROL:           str(),
 
   // ─── Avisos ───────────────────────────────────────────────────────────────
-  AVISOS_URL_BASE: process.env.AVISOS_URL_BASE ?? '',
-  AVISOS_TOKEN: process.env.AVISOS_TOKEN ?? '',
-  AVISOS_CODIGO_PLANTILLA: process.env.AVISOS_CODIGO_PLANTILLA ?? '',
-  AVISOS_UUID_CIUDADANO: process.env.AVISOS_UUID_CIUDADANO ?? '',
-  AVISOS_UUID_CIUDADANO_2: process.env.AVISOS_UUID_CIUDADANO_2 ?? '',
-  AVISOS_PARAMETRO_1: process.env.AVISOS_PARAMETRO_1,
-  AVISOS_PARAMETRO_REDIRECCION: process.env.AVISOS_PARAMETRO_REDIRECCION,
+  AVISOS_URL_BASE:         str(),
+  AVISOS_TOKEN:            str(),
+  AVISOS_CODIGO_PLANTILLA: str(),
+  AVISOS_UUID_CIUDADANO:   str(),
+  AVISOS_UUID_CIUDADANO_2: str(),
+  AVISOS_PARAMETRO_1:           str(),
+  AVISOS_PARAMETRO_REDIRECCION: str(),
 
-  // ─── Notificador — Obligatorio Legal ─────────────────────────────────────
-  ISSUER_NOTIFICADOR_OBL_LEGAL: process.env.ISSUER_NOTIFICADOR_OBL_LEGAL ?? '',
-  TOKEN_CONFIGURACION_OBL_LEGAL: process.env.TOKEN_CONFIGURACION_OBL_LEGAL ?? '',
+  // ─── Notificador — Obligatorio Legal / Requerimiento ─────────────────────
+  ISSUER_NOTIFICADOR_OBL_LEGAL:  str(),
+  TOKEN_CONFIGURACION_OBL_LEGAL: str(),
 
-  // ─── Notificador — Obligatorio Requerimiento ──────────────────────────────
-  ISSUER_NOTIFICADOR_OBL_REQ: process.env.ISSUER_NOTIFICADOR_OBL_REQ ?? '',
-  TOKEN_CONFIGURACION_OBL_REQ: process.env.TOKEN_CONFIGURACION_OBL_REQ ?? '',
+  ISSUER_NOTIFICADOR_OBL_REQ:  str(),
+  TOKEN_CONFIGURACION_OBL_REQ: str(),
 
   // ─── Notificador Jurídico ─────────────────────────────────────────────────
-  NOTI_JURIDICO_CODIGO_ENTIDAD: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD,
-  NOTI_JURIDICO_CODIGO_ENTIDAD_2: process.env.NOTI_JURIDICO_CODIGO_ENTIDAD_2,
+  NOTI_JURIDICO_CODIGO_ENTIDAD:   str(),
+  NOTI_JURIDICO_CODIGO_ENTIDAD_2: str(),
 
   // ─── Documentos Digitales ────────────────────────────────────────────────
-  DOC_DIGITAL_URL_BASE: process.env.DOC_DIGITAL_URL_BASE ?? '',
-  DOC_DIGITAL_TOKEN: process.env.DOC_DIGITAL_TOKEN ?? '',
-  DOC_DIGITAL_CODIGO_DOCUMENTO: process.env.DOC_DIGITAL_CODIGO_DOCUMENTO ?? '',
+  DOC_DIGITAL_URL_BASE:         str(),
+  DOC_DIGITAL_TOKEN:            str(),
+  DOC_DIGITAL_CODIGO_DOCUMENTO: str(),
 
-  // ─── Proveedor ────────────────────────────────────────────────────────────
-  OIDC_ISSUER: process.env.OIDC_ISSUER ?? '',
-  OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID ?? '',
-  OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET ?? '',
-  OIDC_REDIRECT_URI: process.env.OIDC_REDIRECT_URI ?? '',
-  OIDC_TOKEN_PATH: process.env.OIDC_TOKEN_PATH ?? '/token',
-  OIDC_CLIENT_AUTH_METHOD: (process.env.OIDC_CLIENT_AUTH_METHOD ?? 'post') as 'post' | 'basic' | 'mobile',
-  OIDC_SCOPE: process.env.OIDC_SCOPE ?? 'openid profile',
+  // ─── Proveedor OIDC ───────────────────────────────────────────────────────
+  OIDC_ISSUER:        str(),
+  OIDC_CLIENT_ID:     str(),
+  OIDC_CLIENT_SECRET: str(),
+  OIDC_REDIRECT_URI:  str(),
+  OIDC_TOKEN_PATH:    str('/token'),
+  OIDC_CLIENT_AUTH_METHOD: z.enum(['post', 'basic', 'mobile'] as const).catch('post' as const),
+  OIDC_SCOPE: str('openid profile'),
 
-  // ─── Proveedor — autenticación móvil (PKCE) ───────────────────────────────
-  OIDC_MOBILE_CLIENT_ID: process.env.OIDC_MOBILE_CLIENT_ID ?? '',
-  OIDC_MOBILE_REDIRECT_URI: process.env.OIDC_MOBILE_REDIRECT_URI ?? '',
-  OIDC_MOBILE_SCOPE: process.env.OIDC_MOBILE_SCOPE ?? process.env.OIDC_SCOPE ?? 'openid profile',
-} as const;
+  OIDC_MOBILE_CLIENT_ID:    str(),
+  OIDC_MOBILE_REDIRECT_URI: str(),
+  OIDC_MOBILE_SCOPE:        str().optional(),
+});
 
-/** Retorna los nombres de las vars vacías para un módulo dado */
-export function missingVars(module: 'aprobador' | 'notificador' | 'proveedor' | 'avisos' | 'qr-seguro' | 'documentos-digitales'): string[] {
-  const checks: Record<typeof module, Record<string, string>> = {
-    aprobador: {
-      APROBADOR_URL: qaEnv.APROBADOR_URL,
-      TOKEN_CLIENTE: qaEnv.TOKEN_CLIENTE,
-    },
-    notificador: {
-      ISSUER_NOTIFICADOR: qaEnv.ISSUER_NOTIFICADOR,
-      TOKEN_CONFIGURACION: qaEnv.TOKEN_CONFIGURACION,
-    },
-    proveedor: {
-      OIDC_ISSUER: qaEnv.OIDC_ISSUER,
-      OIDC_CLIENT_ID: qaEnv.OIDC_CLIENT_ID,
-      OIDC_REDIRECT_URI: qaEnv.OIDC_REDIRECT_URI,
-    },
-    avisos: {
-      AVISOS_URL_BASE: qaEnv.AVISOS_URL_BASE,
-      AVISOS_TOKEN: qaEnv.AVISOS_TOKEN,
-      AVISOS_CODIGO_PLANTILLA: qaEnv.AVISOS_CODIGO_PLANTILLA,
-      AVISOS_UUID_CIUDADANO: qaEnv.AVISOS_UUID_CIUDADANO,
-    },
-    'qr-seguro': {
-      QR_SEGURO_URL_BASE: qaEnv.QR_SEGURO_URL_BASE,
-      QR_SEGURO_TOKEN: qaEnv.QR_SEGURO_TOKEN,
-    },
-    'documentos-digitales': {
-      DOC_DIGITAL_URL_BASE: qaEnv.DOC_DIGITAL_URL_BASE,
-      DOC_DIGITAL_TOKEN: qaEnv.DOC_DIGITAL_TOKEN,
-      DOC_DIGITAL_CODIGO_DOCUMENTO: qaEnv.DOC_DIGITAL_CODIGO_DOCUMENTO,
-    },
-  };
-  return Object.entries(checks[module])
-    .filter(([, v]) => !v)
-    .map(([k]) => k);
-}
+// ─── Parseo + post-proceso ────────────────────────────────────────────────────
+
+const _raw = rawSchema.parse(process.env);
+
+// Fallback: cuando la persona específica no está configurada, se usa el operador QA.
+const _op = {
+  tipoDoc:    _raw.QA_OPERADOR_TIPO_DOC,
+  numeroDoc:  _raw.QA_OPERADOR_NUMERO_DOC,
+  fechaNac:   _raw.QA_OPERADOR_FECHA_NAC,
+};
+
+export const qaEnv = {
+  // ─── QA Webhook ─────────────────────────────────────────────────────────
+  QA_WEBHOOK_PORT:    _raw.WEBHOOK_PORT,
+  QA_WEBHOOK_ENABLED: _raw.QA_WEBHOOK_ENABLED !== 'false',
+
+  // ─── Aprobador ───────────────────────────────────────────────────────────
+  APROBADOR_URL: _raw.APROBADOR_URL,
+  TOKEN_CLIENTE:  _raw.TOKEN_CLIENTE,
+  HASH_MODE:      _raw.HASH_MODE,
+
+  APRO_CALLBACK_PATH:       _raw.APRO_CALLBACK_PATH,
+  APRO_CALLBACK_TIMEOUT_MS: _raw.APRO_CALLBACK_TIMEOUT_MS,
+
+  // ─── Notificador — callbacks webhook ─────────────────────────────────────
+  NOTI_CALLBACK_PATH:       _raw.NOTI_CALLBACK_PATH,
+  NOTI_CALLBACK_TIMEOUT_MS: _raw.NOTI_CALLBACK_TIMEOUT_MS,
+
+  NOTI_OBL_LEGAL_CALLBACK_PATH:       _raw.NOTI_OBL_LEGAL_CALLBACK_PATH,
+  NOTI_OBL_LEGAL_CALLBACK_TIMEOUT_MS: _raw.NOTI_OBL_LEGAL_CALLBACK_TIMEOUT_MS,
+
+  NOTI_OBL_REQ_CALLBACK_PATH:       _raw.NOTI_OBL_REQ_CALLBACK_PATH,
+  NOTI_OBL_REQ_CALLBACK_TIMEOUT_MS: _raw.NOTI_OBL_REQ_CALLBACK_TIMEOUT_MS,
+
+  NOTI_WEBHOOK_WATCH_PATHS:           _raw.NOTI_WEBHOOK_WATCH_PATHS,
+  NOTI_OBL_LEGAL_WEBHOOK_WATCH_PATHS: _raw.NOTI_OBL_LEGAL_WEBHOOK_WATCH_PATHS,
+  NOTI_OBL_REQ_WEBHOOK_WATCH_PATHS:   _raw.NOTI_OBL_REQ_WEBHOOK_WATCH_PATHS,
+
+  // ─── Notificador — conexión ───────────────────────────────────────────────
+  ISSUER_NOTIFICADOR:  _raw.ISSUER_NOTIFICADOR,
+  TOKEN_CONFIGURACION: _raw.TOKEN_CONFIGURACION,
+  RSA_PUBLIC_KEY_PATH: _raw.RSA_PUBLIC_KEY_PATH,
+  RSA_PADDING:         _raw.RSA_PADDING,
+
+  // ─── Notificador — contenido ──────────────────────────────────────────────
+  NOTI_TITULO:      _raw.NOTI_TITULO,
+  NOTI_DESCRIPCION: _raw.NOTI_DESCRIPCION,
+
+  NOTI_NOTIFICADOR_TIPO_DOC:   _raw.NOTI_NOTIFICADOR_TIPO_DOC   ?? _op.tipoDoc,
+  NOTI_NOTIFICADOR_NUMERO_DOC: _raw.NOTI_NOTIFICADOR_NUMERO_DOC ?? _op.numeroDoc,
+  NOTI_NOTIFICADOR_FECHA_NAC:  _raw.NOTI_NOTIFICADOR_FECHA_NAC  ?? _op.fechaNac,
+
+  NOTI_AUTORIDAD_TIPO_DOC:   _raw.NOTI_AUTORIDAD_TIPO_DOC   ?? _op.tipoDoc,
+  NOTI_AUTORIDAD_NUMERO_DOC: _raw.NOTI_AUTORIDAD_NUMERO_DOC ?? _op.numeroDoc,
+  NOTI_AUTORIDAD_FECHA_NAC:  _raw.NOTI_AUTORIDAD_FECHA_NAC  ?? _op.fechaNac,
+
+  NOTI_NOTIFICADO_TIPO_DOC:   _raw.NOTI_NOTIFICADO_TIPO_DOC,
+  NOTI_NOTIFICADO_NUMERO_DOC: _raw.NOTI_NOTIFICADO_NUMERO_DOC,
+  NOTI_NOTIFICADO_FECHA_NAC:  _raw.NOTI_NOTIFICADO_FECHA_NAC,
+
+  NOTI_NOTIFICADO_CIE_NUMERO_DOC: _raw.NOTI_NOTIFICADO_CIE_NUMERO_DOC,
+  NOTI_NOTIFICADO_CIE_FECHA_NAC:  _raw.NOTI_NOTIFICADO_CIE_FECHA_NAC,
+
+  NOTI_ENLACE_URL:      _raw.NOTI_ENLACE_URL,
+  NOTI_ENLACE_ETIQUETA: _raw.NOTI_ENLACE_ETIQUETA,
+  NOTI_ENLACE_TIPO:     _raw.NOTI_ENLACE_TIPO,
+  NOTI_ENLACE_HASH:     _raw.NOTI_ENLACE_HASH,
+
+  NOTI_ENLACE_FIRMA_URL:      _raw.NOTI_ENLACE_FIRMA_URL,
+  NOTI_ENLACE_FIRMA_ETIQUETA: _raw.NOTI_ENLACE_FIRMA_ETIQUETA,
+  NOTI_ENLACE_FIRMA_HASH:     _raw.NOTI_ENLACE_FIRMA_HASH,
+
+  NOTI_FORMULARIO_URL:      _raw.NOTI_FORMULARIO_URL,
+  NOTI_FORMULARIO_ETIQUETA: _raw.NOTI_FORMULARIO_ETIQUETA,
+  NOTI_FORMULARIO_TIPO:     _raw.NOTI_FORMULARIO_TIPO,
+  NOTI_FORMULARIO_HASH:     _raw.NOTI_FORMULARIO_HASH,
+
+  NOTI_ENTIDAD_NOTIFICADORA: _raw.NOTI_ENTIDAD_NOTIFICADORA,
+
+  // ─── Delegado de Entidad Pública ─────────────────────────────────────────
+  NOTI_DELEGADO_CODIGO_ENTIDAD: _raw.NOTI_DELEGADO_CODIGO_ENTIDAD,
+  NOTI_DELEGADO_DESCRIPCION:    _raw.NOTI_DELEGADO_DESCRIPCION,
+
+  NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC:   _raw.NOTI_DELEGADO_REPRESENTANTE_TIPO_DOC   ?? _op.tipoDoc,
+  NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC: _raw.NOTI_DELEGADO_REPRESENTANTE_NUMERO_DOC ?? _op.numeroDoc,
+  NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC:  _raw.NOTI_DELEGADO_REPRESENTANTE_FECHA_NAC  ?? _op.fechaNac,
+
+  // ─── QR-Seguro ───────────────────────────────────────────────────────────
+  QR_SEGURO_URL_BASE: _raw.QR_SEGURO_URL_BASE,
+  QR_SEGURO_TOKEN:    _raw.QR_SEGURO_TOKEN,
+
+  QR_SEGURO_CODIGO_DOCUMENTO:      _raw.QR_SEGURO_CODIGO_DOCUMENTO,
+  QR_SEGURO_NOMBRE_DOCUMENTO:      _raw.QR_SEGURO_NOMBRE_DOCUMENTO,
+  QR_SEGURO_DESCRIPCION_DOCUMENTO: _raw.QR_SEGURO_DESCRIPCION_DOCUMENTO,
+  QR_SEGURO_TITULAR_NOMBRE:        _raw.QR_SEGURO_TITULAR_NOMBRE,
+  QR_SEGURO_TITULAR_TIPO_DOC:      _raw.QR_SEGURO_TITULAR_TIPO_DOC   ?? _op.tipoDoc,
+  QR_SEGURO_TITULAR_NUMERO_DOC:    _raw.QR_SEGURO_TITULAR_NUMERO_DOC ?? _op.numeroDoc,
+  QR_SEGURO_TITULAR_ROL:           _raw.QR_SEGURO_TITULAR_ROL,
+
+  // ─── Avisos ───────────────────────────────────────────────────────────────
+  AVISOS_URL_BASE:         _raw.AVISOS_URL_BASE,
+  AVISOS_TOKEN:            _raw.AVISOS_TOKEN,
+  AVISOS_CODIGO_PLANTILLA: _raw.AVISOS_CODIGO_PLANTILLA,
+  AVISOS_UUID_CIUDADANO:   _raw.AVISOS_UUID_CIUDADANO,
+  AVISOS_UUID_CIUDADANO_2: _raw.AVISOS_UUID_CIUDADANO_2,
+  AVISOS_PARAMETRO_1:           _raw.AVISOS_PARAMETRO_1,
+  AVISOS_PARAMETRO_REDIRECCION: _raw.AVISOS_PARAMETRO_REDIRECCION,
+
+  // ─── Notificador — Obligatorio Legal / Requerimiento ─────────────────────
+  ISSUER_NOTIFICADOR_OBL_LEGAL:  _raw.ISSUER_NOTIFICADOR_OBL_LEGAL,
+  TOKEN_CONFIGURACION_OBL_LEGAL: _raw.TOKEN_CONFIGURACION_OBL_LEGAL,
+
+  ISSUER_NOTIFICADOR_OBL_REQ:  _raw.ISSUER_NOTIFICADOR_OBL_REQ,
+  TOKEN_CONFIGURACION_OBL_REQ: _raw.TOKEN_CONFIGURACION_OBL_REQ,
+
+  // ─── Notificador Jurídico ─────────────────────────────────────────────────
+  NOTI_JURIDICO_CODIGO_ENTIDAD:   _raw.NOTI_JURIDICO_CODIGO_ENTIDAD,
+  NOTI_JURIDICO_CODIGO_ENTIDAD_2: _raw.NOTI_JURIDICO_CODIGO_ENTIDAD_2,
+
+  // ─── Documentos Digitales ────────────────────────────────────────────────
+  DOC_DIGITAL_URL_BASE:         _raw.DOC_DIGITAL_URL_BASE,
+  DOC_DIGITAL_TOKEN:            _raw.DOC_DIGITAL_TOKEN,
+  DOC_DIGITAL_CODIGO_DOCUMENTO: _raw.DOC_DIGITAL_CODIGO_DOCUMENTO,
+
+  // ─── Proveedor OIDC ───────────────────────────────────────────────────────
+  OIDC_ISSUER:             _raw.OIDC_ISSUER,
+  OIDC_CLIENT_ID:          _raw.OIDC_CLIENT_ID,
+  OIDC_CLIENT_SECRET:      _raw.OIDC_CLIENT_SECRET,
+  OIDC_REDIRECT_URI:       _raw.OIDC_REDIRECT_URI,
+  OIDC_TOKEN_PATH:         _raw.OIDC_TOKEN_PATH,
+  OIDC_CLIENT_AUTH_METHOD: _raw.OIDC_CLIENT_AUTH_METHOD,
+  OIDC_SCOPE:              _raw.OIDC_SCOPE,
+
+  OIDC_MOBILE_CLIENT_ID:    _raw.OIDC_MOBILE_CLIENT_ID,
+  OIDC_MOBILE_REDIRECT_URI: _raw.OIDC_MOBILE_REDIRECT_URI,
+  OIDC_MOBILE_SCOPE:        _raw.OIDC_MOBILE_SCOPE ?? _raw.OIDC_SCOPE,
+};
