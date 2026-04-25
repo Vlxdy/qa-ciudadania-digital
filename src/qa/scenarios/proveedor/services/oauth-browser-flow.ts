@@ -313,7 +313,9 @@ export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
   const page = await browser.newPage();
 
   // --- LÓGICA DE CAPTURA DE PROTOCOLO MÓVIL ---
-  // Creamos una promesa que se resolverá en cuanto detectemos el intento de navegación al esquema móvil
+  // Playwright/Chromium modernos abortan la navegación a protocolos custom (e.g.
+  // bo.gob.ciudadania.app:/) y emiten `requestfailed` en lugar de `request`.
+  // Escuchamos ambos eventos para cubrir versiones antiguas y nuevas.
   const mobileRedirectPromise = new Promise<Record<string, string>>(
     (resolve, reject) => {
       const timeout = setTimeout(
@@ -326,25 +328,26 @@ export async function runQaMobileLogin(): Promise<ProveedorLoginResult> {
         config.timeoutMs,
       );
 
-      // Escuchamos todas las peticiones salientes
-      page.on("request", (request: any) => {
-        const url = request.url();
-        // Si la URL empieza con tu redirectUri (ej. bo.gob.nombre-sistema.rpa:/)
-        if (url.startsWith(config.redirectUri)) {
-          clearTimeout(timeout);
-          debugLog(`¡Redirección capturada internamente!: ${url}`);
+      let resolved = false;
 
-          // Parseamos los parámetros. Como URL() puede fallar con protocolos raros,
-          // convertimos temporalmente a una URL válida de http para extraer params.
-          const normalizedUrl = new URL(
-            url.replace(config.redirectUri, "http://localhost/"),
-          );
-          const params = Object.fromEntries(
-            normalizedUrl.searchParams.entries(),
-          );
-          resolve(params);
-        }
-      });
+      const captureRedirect = (url: string) => {
+        if (resolved) return;
+        if (!url.startsWith(config.redirectUri)) return;
+
+        resolved = true;
+        clearTimeout(timeout);
+        debugLog(`¡Redirección capturada!: ${url}`);
+
+        // URL() falla con protocolos custom; los convertimos a http para extraer params.
+        const normalizedUrl = new URL(
+          url.replace(config.redirectUri, "http://localhost/"),
+        );
+        const params = Object.fromEntries(normalizedUrl.searchParams.entries());
+        resolve(params);
+      };
+
+      page.on("request", (request: any) => captureRedirect(request.url()));
+      page.on("requestfailed", (request: any) => captureRedirect(request.url()));
     },
   );
 
