@@ -65,21 +65,23 @@ export async function maybeAutoLogin(page: any): Promise<void> {
   if (process.env.CEDULA_IDENTIDAD && process.env.CONTRASENA) {
     const cedula = String(process.env.CEDULA_IDENTIDAD);
     const contrasena = String(process.env.CONTRASENA);
+    const pageLoadTimeout = Number(process.env.QA_PAGE_LOAD_TIMEOUT_MS ?? 15_000);
+
     await page.locator("#login").fill(cedula);
     await page.locator("#password").fill(contrasena);
     await page.locator("#continuar").click();
-    // await page.getByRole("button", { name: /otro medio/i }).click();
-    const otroMedioBtn = page.getByRole("button", { name: /otro medio/i });
 
+    // Esperar a que la página termine de cargar antes de buscar el siguiente elemento
+    await page.waitForLoadState("domcontentloaded");
+
+    const otroMedioBtn = page.getByRole("button", { name: /otro medio/i });
     try {
-      await otroMedioBtn.waitFor({ timeout: 2000 });
+      await otroMedioBtn.waitFor({ timeout: pageLoadTimeout });
       await otroMedioBtn.click();
+      await page.waitForLoadState("domcontentloaded");
     } catch {
       // no existe → seguimos flujo normal
     }
-    // await page
-    // .locator('input[type="radio"][name="method"][value="TOTP"]')
-    // .check();
 
     const methodOptions = [
       'input[type="radio"][name="method"][value="TOTP"]',
@@ -110,6 +112,10 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     }
 
     await page.locator("#continuar-2fa").click();
+
+    // Esperar a que cargue el formulario del código 2FA antes de llenarlo
+    await page.waitForLoadState("domcontentloaded");
+
     await page.locator('input[data-index="0"]').fill("1");
     await page.locator('input[data-index="1"]').fill("2");
     await page.locator('input[data-index="2"]').fill("3");
@@ -118,17 +124,15 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     await page.locator('input[data-index="5"]').fill("6");
     await page.locator("#continuar-2fa-validar").click();
 
-    // --- NUEVA SECCIÓN PARA PERMISOS ---
-    const botonPermitir = page.getByRole("button", { name: /permitir/i });
+    // Esperar a que la página cargue antes de buscar el botón de permisos
+    await page.waitForLoadState("domcontentloaded");
 
+    const botonPermitir = page.getByRole("button", { name: /permitir/i });
     try {
-      // Esperamos un máximo de 5 segundos a que aparezca (ajustable)
-      // Usamos isVisible() para no lanzar una excepción si no aparece
-      await botonPermitir.waitFor({ state: "visible", timeout: 5000 });
+      await botonPermitir.waitFor({ state: "visible", timeout: pageLoadTimeout });
       await botonPermitir.click();
       logger.info("Botón de permisos detectado y clickeado.");
     } catch (error) {
-      // Si el timeout expira, simplemente continuamos el flujo
       logger.info("No apareció la pantalla de permisos, continuando...");
     }
   } else {
