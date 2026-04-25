@@ -65,22 +65,16 @@ export async function maybeAutoLogin(page: any): Promise<void> {
   if (process.env.CEDULA_IDENTIDAD && process.env.CONTRASENA) {
     const cedula = String(process.env.CEDULA_IDENTIDAD);
     const contrasena = String(process.env.CONTRASENA);
-    const pageLoadTimeout = Number(process.env.QA_PAGE_LOAD_TIMEOUT_MS ?? 15_000);
 
     await page.locator("#login").fill(cedula);
     await page.locator("#password").fill(contrasena);
     await page.locator("#continuar").click();
-
-    // Esperar a que la página termine de cargar antes de buscar el siguiente elemento
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
 
     const otroMedioBtn = page.getByRole("button", { name: /otro medio/i });
-    try {
-      await otroMedioBtn.waitFor({ timeout: pageLoadTimeout });
+    if (await otroMedioBtn.isVisible()) {
       await otroMedioBtn.click();
-      await page.waitForLoadState("domcontentloaded");
-    } catch {
-      // no existe → seguimos flujo normal
+      await page.waitForLoadState("networkidle");
     }
 
     const methodOptions = [
@@ -90,15 +84,9 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     ];
 
     let selectedMethod: string | null = null;
-
     for (const selector of methodOptions) {
       const option = page.locator(selector);
-
-      if (
-        (await option.count()) > 0 &&
-        (await option.isVisible()) &&
-        (await option.isEnabled())
-      ) {
+      if (await option.isVisible()) {
         await option.check();
         selectedMethod = selector;
         break;
@@ -106,15 +94,11 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     }
 
     if (!selectedMethod) {
-      throw new Error(
-        "No se encontró ningún método de autenticación disponible",
-      );
+      throw new Error("No se encontró ningún método de autenticación disponible");
     }
 
     await page.locator("#continuar-2fa").click();
-
-    // Esperar a que cargue el formulario del código 2FA antes de llenarlo
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
 
     await page.locator('input[data-index="0"]').fill("1");
     await page.locator('input[data-index="1"]').fill("2");
@@ -123,16 +107,13 @@ export async function maybeAutoLogin(page: any): Promise<void> {
     await page.locator('input[data-index="4"]').fill("5");
     await page.locator('input[data-index="5"]').fill("6");
     await page.locator("#continuar-2fa-validar").click();
-
-    // Esperar a que la página cargue antes de buscar el botón de permisos
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
 
     const botonPermitir = page.getByRole("button", { name: /permitir/i });
-    try {
-      await botonPermitir.waitFor({ state: "visible", timeout: pageLoadTimeout });
+    if (await botonPermitir.isVisible()) {
       await botonPermitir.click();
       logger.info("Botón de permisos detectado y clickeado.");
-    } catch (error) {
+    } else {
       logger.info("No apareció la pantalla de permisos, continuando...");
     }
   } else {
