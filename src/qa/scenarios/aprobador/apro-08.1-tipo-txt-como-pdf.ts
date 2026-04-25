@@ -10,6 +10,7 @@ import type {
 import { makeResult } from "../../types/scenario.types";
 import { qaPost } from "../../http/qa-http";
 import { buildSingleBody, singleUrl, defaultToken, fixtures } from "./helpers";
+import { ensureAccessToken } from "../proveedor/services/token-provider";
 
 const META = {
   id: "apro-08.1",
@@ -21,6 +22,7 @@ const META = {
 const EXPECTED: ExpectedOutcome = {
   success: false,
   httpStatus: 400,
+  bodyContains: ['documento no válido']
 };
 
 export const scenario: Scenario = {
@@ -30,7 +32,8 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
-      const body = buildSingleBody(fixtures.txtFile, { tipoDocumento: "PDF" });
+      const accessToken = await ensureAccessToken();
+      const body = buildSingleBody(fixtures.txtFile, { tipoDocumento: "PDF", accessToken });
       const response = await qaPost(singleUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         "Content-Type": "application/json",

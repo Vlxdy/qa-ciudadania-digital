@@ -5,6 +5,7 @@ import type { Scenario, ScenarioResult } from "../../types/scenario.types";
 import { makeResult } from "../../types/scenario.types";
 import { qaPost } from "../../http/qa-http";
 import { buildSingleBody, singleUrl, defaultToken, fixtures } from "./helpers";
+import { ensureAccessToken } from "../proveedor/services/token-provider";
 
 const META = {
   id: "apro-19",
@@ -25,8 +26,10 @@ export const scenario: Scenario = {
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
     try {
+      const accessToken = await ensureAccessToken();
       const body = buildSingleBody(fixtures.validPdf, {
         idTramite: "ESTE_NO_ES_UN_UUID",
+        accessToken
       });
       const response = await qaPost(singleUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,

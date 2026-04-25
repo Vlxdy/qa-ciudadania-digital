@@ -707,7 +707,7 @@ function shellEscapeSingle(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
+export function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
   const request = result.actual.request;
 
   // Sin request (p.ej. error local antes de construir el body): guardar script de documentación
@@ -829,16 +829,21 @@ function writeCurlForResult(baseDir: string, result: ScenarioResult): void {
   );
 }
 
-/**
- * Guarda artefactos curl por escenario ejecutado.
- * Estructura: output/qa/curls/<modulo>/<escenario>/request.sh y data.json (si aplica).
- */
-export function saveCurlArtifacts(summary: RunSummary): string {
+export function createCurlRunDir(): string {
   const rootDir = path.resolve('./output/qa/curls');
   fs.mkdirSync(rootDir, { recursive: true });
   const runTs = new Date().toISOString().replace(/[:.]/g, '-');
   const dir = path.join(rootDir, `run-${runTs}`);
   fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/**
+ * Guarda artefactos curl por escenario ejecutado.
+ * Estructura: output/qa/curls/<modulo>/<escenario>/request.sh y data.json (si aplica).
+ */
+export function saveCurlArtifacts(summary: RunSummary, runDir?: string): string {
+  const dir = runDir ?? createCurlRunDir();
 
   for (const result of summary.results) {
     writeCurlForResult(dir, result);

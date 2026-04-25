@@ -36,12 +36,13 @@ export const scenario: Scenario = {
     'PDF válido: envía solicitud, aprueba vía Playwright y valida el callback webhook de confirmación.',
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
+    let response: Awaited<ReturnType<typeof qaPost>> | undefined;
     try {
       const accessToken = await ensureAccessToken();
       const webhookStartIndex = callbackCount();
 
       const body = buildSingleBody(fixtures.validPdf, { accessToken });
-      const response = await qaPost(singleUrl(), body, {
+      response = await qaPost(singleUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
       });
@@ -102,6 +103,10 @@ export const scenario: Scenario = {
         {
           localError: err instanceof Error ? err.message : String(err),
           durationMs: Date.now() - start,
+          request: response?.request,
+          ...(response !== undefined
+            ? { httpStatus: response.httpStatus, body: { solicitudResponse: response.body } }
+            : {}),
         },
         EXPECTED,
       );

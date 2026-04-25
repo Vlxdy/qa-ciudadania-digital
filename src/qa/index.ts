@@ -19,6 +19,7 @@ import { qrSeguroScenarios } from './scenarios/qr-seguro';
 import { documentosDigitalesScenarios } from './scenarios/documentos-digitales';
 import { runScenarios } from './runner/scenario.runner';
 import {
+  createCurlRunDir,
   loadPreviousReport,
   printDiffReport,
   printDryRun,
@@ -28,9 +29,9 @@ import {
   printScenarioSkippedLive,
   printScenarioStartLive,
   resetLiveProgress,
-  saveCurlArtifacts,
   saveJUnit,
   saveReport,
+  writeCurlForResult,
 } from './runner/report.service';
 import { missingVars, qaEnv } from './config/qa-env';
 import { logger } from '../utils/logger.util';
@@ -169,6 +170,10 @@ async function main() {
     }
   }
 
+  // Crear directorio de curls antes de ejecutar para escribir progresivamente
+  const curlDir = createCurlRunDir();
+  logger.info(`CURLs QA en: ${curlDir}`);
+
   // Ejecutar
   resetLiveProgress();
   const summary = await runScenarios(
@@ -180,6 +185,7 @@ async function main() {
       },
       onScenarioResult: ({ result }) => {
         printScenarioResultLive(result);
+        writeCurlForResult(curlDir, result);
       },
       onScenarioSkipped: ({ scenario, reason }) => {
         printScenarioSkippedLive(scenario, reason);
@@ -200,7 +206,6 @@ async function main() {
   // Comparación con run anterior
   printDiffReport(summary, previousReport);
 
-  const curlDir = saveCurlArtifacts(summary);
   logger.ok(`CURLs QA guardados en: ${curlDir}`);
 
   // Reporte JSON opcional (acumula historial para comparación futura)

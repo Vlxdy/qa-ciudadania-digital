@@ -28,11 +28,12 @@ export const scenario: Scenario = {
     'JSON válido con tokens correctos: envía solicitud, obtiene link y completa aprobación vía Playwright.',
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
+    let response: Awaited<ReturnType<typeof qaPost>> | undefined;
     try {
       const accessToken = await ensureAccessToken();
 
       const body = buildSingleBody(fixtures.validJson, { accessToken });
-      const response = await qaPost(singleUrl(), body, {
+      response = await qaPost(singleUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         'Content-Type': 'application/json',
       });
@@ -65,6 +66,10 @@ export const scenario: Scenario = {
         {
           localError: err instanceof Error ? err.message : String(err),
           durationMs: Date.now() - start,
+          request: response?.request,
+          ...(response !== undefined
+            ? { httpStatus: response.httpStatus, body: { solicitudResponse: response.body } }
+            : {}),
         },
         EXPECTED,
       );

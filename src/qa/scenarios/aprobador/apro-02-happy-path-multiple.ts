@@ -38,6 +38,7 @@ export const scenario: Scenario = {
     "2 PDFs válidos en modo múltiple: envía solicitud, obtiene link y completa aprobación vía Playwright.",
   run: async (): Promise<ScenarioResult> => {
     const start = Date.now();
+    let response: Awaited<ReturnType<typeof qaPost>> | undefined;
     try {
       const accessToken = await ensureAccessToken();
       const webhookStartIndex = callbackCount();
@@ -45,7 +46,7 @@ export const scenario: Scenario = {
       const body = buildMultipleBody([fixtures.validPdf, fixtures.validPdf], {
         accessToken,
       });
-      const response = await qaPost(multipleUrl(), body, {
+      response = await qaPost(multipleUrl(), body, {
         Authorization: `Bearer ${defaultToken()}`,
         "Content-Type": "application/json",
       });
@@ -109,6 +110,10 @@ export const scenario: Scenario = {
         {
           localError: err instanceof Error ? err.message : String(err),
           durationMs: Date.now() - start,
+          request: response?.request,
+          ...(response !== undefined
+            ? { httpStatus: response.httpStatus, body: { solicitudResponse: response.body } }
+            : {}),
         },
         EXPECTED,
       );
